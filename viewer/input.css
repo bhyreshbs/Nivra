@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/* =========================================
+   Nivra Design Tokens — DARK UI by default
+   ========================================= */
+@theme {
+  --font-family-sans: 'Inter', 'Segoe UI', sans-serif;
+
+  --color-nivra-accent:      #3B82F6;
+  --color-nivra-accentHover: #2563EB;
+  --color-nivra-glow:        rgba(59, 130, 246, 0.3);
+
+  /* UI Chrome — dark by default */
+  --color-ui-bg:          #0D1117;
+  --color-ui-surface:     #161B22;
+  --color-ui-surfaceHover:#1C2128;
+  --color-ui-border:      #30363D;
+  --color-ui-borderLight: #21262D;
+  --color-ui-text:        #E6EDF3;
+  --color-ui-textMuted:   #7D8590;
+  --color-ui-textSubtle:  #484F58;
+
+  /* Shadows */
+  --shadow-panel: 0 0 0 1px rgba(48,54,61,0.8), 0 8px 24px rgba(0,0,0,0.4), 0 24px 48px rgba(0,0,0,0.3);
+  --shadow-toolbar: 0 0 0 1px rgba(48,54,61,0.5), 0 4px 20px rgba(0,0,0,0.4);
+  --shadow-page: 0 4px 24px rgba(0,0,0,0.5);
+}
+
+/* =========================================
+   Base
+   ========================================= */
+@layer base {
+  html, body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    background: #0D1117;
+    color: #E6EDF3;
+  }
+
+  /* Slim dark scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: #30363D;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background-color: #484F58; }
+
+  /* Number input - hide arrows */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Custom range slider */
+  input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 3px;
+    background: #30363D; border-radius: 2px; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff;
+    border: 2px solid #3B82F6;
+    cursor: pointer; margin-top: -5.5px;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    transition: box-shadow 0.15s ease;
+  }
+  input[type=range]::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 0 5px rgba(59,130,246,0.25);
+  }
+  input[type=range]:focus { outline: none; }
+}
+
+/* =========================================
+   Components
+   ========================================= */
+@layer components {
+
+  /* Toggle Switch */
+  .toggle-checkbox:checked { right: 0; border-color: #3B82F6; }
+  .toggle-checkbox:checked + .toggle-label { background-color: #3B82F6; }
+
+  /* Popovers */
+  .popover {
+    opacity: 0; visibility: hidden; transform: translateY(8px) scale(0.98);
+    transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
+    pointer-events: none;
+  }
+  .popover.active {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  /* =============================================
+     VIEWER LAYOUT
+     ============================================= */
+  #viewerWrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #060B10;
+  }
+
+  #viewerContainer {
+    position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+    overflow: auto; outline: none;
+  }
+
+  #viewer.pdfViewer {
+    padding-bottom: 8rem;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 1.5rem; padding-top: 2rem;
+    min-height: 100%;
+  }
+
+  .pdfViewer .page {
+    background: #fff;
+    box-shadow: var(--shadow-page);
+    border-radius: 2px;
+    margin: 0 auto;
+  }
+
+  /* =============================================
+     SMART DARK MODE  — canvas-specific filter
+     images inside canvas are unavoidably affected
+     by CSS filter but hue-rotate(180deg) keeps
+     hues approximately intact.
+     ============================================= */
+  #viewerWrapper.mode-smart-dark {
+    background: #060B10;
+  }
+  #viewerWrapper.mode-smart-dark .pdfViewer {
+    background: transparent;
+  }
+  #viewerWrapper.mode-smart-dark .page {
+    background: #141414 !important;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.7) !important;
+  }
+
+  /*
+   * Smart Dark rendering pipeline:
+   *   #viewerWrapper  ← CSS filter: invert(100%) hue-rotate(180deg)  [applied in JS]
+   *   .page canvas    ← PDF.js high-resolution render (UNTOUCHED)
+   *   .nivra-image-overlay ← counter-filter overlay that restores image regions
+   *   .textLayer      ← text selection (z-index:2, not affected by our overlay)
+   *
+   * No canvas pixel loops. No getImageData/putImageData. No resolution loss.
+   */
+
+  /* Image-protection overlay canvas (created by image-protector.js) */
+  .nivra-image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;       /* above canvas (0), below textLayer (2) */
+    display: block;
+  }
+
+  #viewerWrapper.mode-smart-dark .textLayer ::selection {
+    background: rgba(59,130,246,0.4);
+  }
+
+  /* True Invert — apply to whole viewer wrapper */
+  #viewerWrapper.mode-true-invert { filter: invert(100%); }
+
+  /* Grayscale */
+  #viewerWrapper.mode-grayscale { filter: grayscale(100%); }
+
+  /* High Contrast */
+  #viewerWrapper.mode-high-contrast { filter: contrast(180%) brightness(0.9) saturate(1.2); }
+
+  /* Brightness / Contrast adjustments layer (composited via CSS variable) */
+  #viewerWrapper {
+    --adj: none;
+  }
+}

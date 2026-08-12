@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Nivra",
+  "version": "1.0.0",
+  "description": "Render PDFs locally and apply real-time visual transformations.",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*.pdf",
+    "*://*/*.PDF",
+    "file:///*/*.pdf",
+    "file:///*/*.PDF"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline';"
+  },
+  "background": {
+    "service_worker": "background/sw.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_icon": "assets/icon48.png",
+    "default_title": "Nivra Settings"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "viewer/*",
+        "pdfjs/*",
+        "transformations/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "nivra",
+  "version": "1.0.0",
+  "description": "**Make documents easier on your eyes.**",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npx @tailwindcss/cli -i ./viewer/input.css -o ./viewer/viewer.css && node build.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "pdfjs-dist": "^6.2.108"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

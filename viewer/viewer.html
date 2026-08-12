@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nivra PDF Viewer</title>
+    <link rel="stylesheet" href="../pdfjs/web/pdf_viewer.css">
+    <link rel="stylesheet" href="fonts/inter/index.css">
+    <link rel="stylesheet" href="viewer.css">
+
+    <style>
+    /* Inline critical overrides that depend on runtime values */
+    body { background:#0D1117; color:#E6EDF3; }
+    
+    /* Appearance panel mode cards — active state */
+    .mode-card.active {
+        border-color: #3B82F6 !important;
+        background: rgba(59,130,246,0.12) !important;
+        box-shadow: 0 0 0 1px rgba(59,130,246,0.3), inset 0 0 20px rgba(59,130,246,0.05);
+    }
+    .mode-card.active .mode-icon { color: #3B82F6; }
+    .mode-card.active .mode-name { color: #60A5FA; }
+
+    /* Mode preview strips */
+    .preview-smart { background: linear-gradient(to right, #141414 40%, #E5E7EB 40%); }
+    .preview-original { background: linear-gradient(to right, #fff 40%, #111 40%); }
+    .preview-invert { background: linear-gradient(to right, #111 40%, #E76F00 40%); }
+    .preview-gray { background: linear-gradient(to right, #888 40%, #ccc 40%); }
+    .preview-contrast { background: linear-gradient(to right, #000 40%, #fff 40%); }
+
+    /* Bottom toolbar glass effect */
+    #bottom-toolbar {
+        background: rgba(22,27,34,0.92);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid rgba(48,54,61,0.8);
+        box-shadow: var(--shadow-toolbar, 0 4px 20px rgba(0,0,0,0.4));
+    }
+
+    /* Top header glass */
+    header {
+        background: rgba(22,27,34,0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Hover states for dark UI */
+    .toolbar-btn:hover { background: rgba(48,54,61,0.8) !important; color: #E6EDF3 !important; }
+    .icon-action:hover { background: rgba(48,54,61,0.8) !important; }
+
+    /* Popover dark style */
+    .popover-panel {
+        background: #1C2128;
+        border: 1px solid #30363D;
+        box-shadow: var(--shadow-panel, 0 8px 24px rgba(0,0,0,0.4));
+    }
+
+    /* Scale select dark */
+    #scale-select { color-scheme: dark; }
+    </style>
+</head>
+
+<body class="h-screen w-screen flex flex-col antialiased overflow-hidden" id="app-body">
+
+    <!-- ================================================
+         TOP HEADER
+         ================================================ -->
+    <header class="h-12 border-b border-ui-border flex items-center justify-between px-4 shrink-0 z-20 relative">
+        <!-- Left: Brand + Filename -->
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-lg bg-nivra-accent text-white flex items-center justify-center font-bold text-base shadow-lg shrink-0 select-none">N</div>
+            <span id="document-title" class="text-sm font-medium text-ui-text truncate max-w-[260px]" title="Loading...">Loading...</span>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-0.5">
+            <!-- Print -->
+            <button id="btn-print" class="toolbar-btn w-9 h-9 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Print (Ctrl+P)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            </button>
+
+            <div class="h-4 w-px bg-ui-border mx-1"></div>
+
+            <!-- Download -->
+            <button id="btn-download" class="toolbar-btn w-9 h-9 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Download">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+
+            <!-- Download popover -->
+            <div id="download-popover" class="popover popover-panel absolute top-14 right-28 w-60 rounded-xl z-50 overflow-hidden">
+                <div class="px-3 py-2 border-b border-ui-border">
+                    <span class="text-[10px] font-semibold tracking-wider text-ui-textSubtle uppercase">Save Document</span>
+                </div>
+                <div class="p-1.5 flex flex-col gap-0.5">
+                    <button id="btn-download-original" class="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-ui-borderLight rounded-lg transition-colors group text-left">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(125,133,144,0.12)">
+                            <svg class="text-ui-textMuted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </div>
+                        <div>
+                            <div class="font-medium text-ui-text text-sm">Download Original</div>
+                            <div class="text-xs text-ui-textMuted">Unmodified PDF file</div>
+                        </div>
+                    </button>
+                    <button id="btn-download-transformed" class="flex items-center gap-3 w-full px-3 py-2.5 text-sm hover:bg-ui-borderLight rounded-lg transition-colors group text-left">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:rgba(59,130,246,0.12)">
+                            <svg class="text-nivra-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg>
+                        </div>
+                        <div>
+                            <div class="font-medium text-nivra-accent text-sm">Download Transformed</div>
+                            <div class="text-xs text-ui-textMuted">With current visual profile</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <button id="btn-search" class="toolbar-btn w-9 h-9 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Search (Ctrl+F)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+
+            <!-- Search popover -->
+            <div id="search-overlay" class="popover popover-panel absolute top-14 right-16 w-80 rounded-xl z-40">
+                <div class="flex items-center gap-2 px-3 py-2.5">
+                    <!-- Search icon -->
+                    <svg class="text-ui-textMuted shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+
+                    <!-- Input -->
+                    <input type="text" id="find-input"
+                        placeholder="Find in document..."
+                        class="flex-1 bg-transparent text-sm outline-none text-ui-text placeholder:text-ui-textMuted min-w-0"
+                        autocomplete="off" spellcheck="false">
+
+                    <!-- Match count -->
+                    <span id="find-results-count" class="text-xs font-mono text-ui-textMuted whitespace-nowrap shrink-0 tabular-nums">0 / 0</span>
+
+                    <!-- Divider -->
+                    <div class="w-px h-4 bg-ui-border shrink-0"></div>
+
+                    <!-- Prev / Next -->
+                    <button id="btn-find-prev"
+                        class="icon-action w-7 h-7 rounded-md flex items-center justify-center text-ui-textMuted hover:text-ui-text transition-colors shrink-0"
+                        title="Previous match (Shift+Enter)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button id="btn-find-next"
+                        class="icon-action w-7 h-7 rounded-md flex items-center justify-center text-ui-textMuted hover:text-ui-text transition-colors shrink-0"
+                        title="Next match (Enter)">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+
+                    <!-- Close -->
+                    <button id="btn-close-search"
+                        class="icon-action w-7 h-7 rounded-md flex items-center justify-center text-ui-textMuted hover:text-ui-text transition-colors shrink-0 ml-0.5"
+                        title="Close search">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-4 w-px bg-ui-border mx-1"></div>
+
+            <!-- Settings -->
+            <button id="btn-settings" class="toolbar-btn w-9 h-9 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+
+            <!-- Settings popover -->
+            <div id="settings-popover" class="popover popover-panel absolute top-14 right-4 w-52 rounded-xl z-50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-ui-border">
+                    <h3 class="text-sm font-semibold text-ui-text">Nivra Settings</h3>
+                </div>
+                <div class="p-2">
+                    <label class="flex items-center justify-between px-3 py-2.5 hover:bg-ui-borderLight rounded-lg cursor-pointer group transition-colors">
+                        <span class="text-sm text-ui-text">Light UI Mode</span>
+                        <div class="relative inline-block w-9 align-middle select-none">
+                            <input type="checkbox" id="ui-dark-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-ui-border appearance-none cursor-pointer transition-all duration-300 z-10 top-0 left-0"/>
+                            <label for="ui-dark-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-ui-textSubtle cursor-pointer transition-colors duration-300"></label>
+                        </div>
+                    </label>
+                    <div class="my-1.5 mx-2 border-t border-ui-border opacity-50"></div>
+                    <a href="#" class="block px-3 py-2 text-sm text-ui-textMuted hover:text-ui-text hover:bg-ui-borderLight rounded-lg transition-colors">About Nivra Extension</a>
+                </div>
+            </div>
+
+            <!-- More -->
+            <button class="toolbar-btn w-9 h-9 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="More">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- ================================================
+         MAIN PDF VIEWER
+         ================================================ -->
+    <main id="viewerWrapper">
+        <div id="viewerContainer" tabindex="0">
+            <div id="viewer" class="pdfViewer"></div>
+        </div>
+    </main>
+
+    <!-- ================================================
+         FLOATING BOTTOM TOOLBAR
+         ================================================ -->
+    <div id="bottom-toolbar" class="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3.5 py-2 rounded-2xl">
+
+        <!-- Zoom controls -->
+        <div class="flex items-center gap-0.5 bg-ui-borderLight rounded-xl px-1 py-0.5 border border-ui-border">
+            <button id="btn-zoom-out" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom Out">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+
+            <select id="scale-select" class="w-16 text-center text-sm font-medium text-ui-text cursor-pointer rounded-lg py-0.5 mx-0.5 bg-transparent border-none outline-none" title="Zoom Level">
+                <option value="0.5">50%</option>
+                <option value="0.75">75%</option>
+                <option value="1">100%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+                <option value="2">200%</option>
+                <option value="page-width">Width</option>
+                <option value="page-fit" selected>Fit</option>
+                <option value="auto">Auto</option>
+            </select>
+
+            <button id="btn-zoom-in" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom In">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <!-- Fit Width -->
+        <button id="btn-fit-width" class="icon-action w-8 h-8 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Fit to Width">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+
+        <!-- Fit Page -->
+        <button id="btn-fit-page" class="icon-action w-8 h-8 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Fit to Page">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="21" y2="3"/><line x1="3" y1="21" x2="14" y2="10"/></svg>
+        </button>
+
+        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+
+        <!-- Page Navigation -->
+        <div class="flex items-center gap-0.5">
+            <button id="btn-page-prev" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Previous Page">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="flex items-center text-sm font-medium text-ui-text mx-1">
+                <input type="number" id="page-number-input" value="1" min="1" class="w-7 text-center bg-transparent border-b border-ui-border focus:border-nivra-accent focus:outline-none transition-colors text-ui-text text-sm" style="color-scheme:dark">
+                <span class="text-ui-textMuted ml-1 text-xs">/ <span id="page-count-display">--</span></span>
+            </div>
+            <button id="btn-page-next" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Next Page">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+        </div>
+
+        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+
+        <!-- Appearance button -->
+        <div class="relative">
+            <button id="btn-appearance" class="flex items-center gap-2 pl-3 pr-4 h-8 bg-nivra-accent text-white rounded-xl hover:bg-nivra-accentHover transition-all shadow-lg font-medium text-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>
+                <span>Appearance</span>
+            </button>
+
+            <!-- =============================================
+                 APPEARANCE POPOVER — Premium Redesign
+                 ============================================= -->
+            <div id="appearance-popover" class="popover absolute bottom-12 right-0 mb-3 w-[340px] rounded-2xl z-50 overflow-hidden"
+                 style="background: linear-gradient(145deg, #1C2128 0%, #161B22 100%); border: 1px solid #30363D; box-shadow: 0 0 0 1px rgba(59,130,246,0.1), 0 24px 48px rgba(0,0,0,0.5);">
+
+                <!-- Header -->
+                <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid rgba(48,54,61,0.8);">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(59,130,246,0.15);">
+                            <svg class="text-nivra-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold text-ui-text">Visual Profile</div>
+                            <div class="text-xs text-ui-textMuted">PDF display mode &amp; adjustments</div>
+                        </div>
+                    </div>
+                    <button id="btn-close-appearance" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+
+                <!-- Mode selector -->
+                <div class="p-4">
+                    <div class="text-[10px] font-semibold tracking-widest text-ui-textSubtle uppercase mb-3 px-0.5">Display Mode</div>
+
+                    <div class="grid grid-cols-2 gap-2" id="mode-grid">
+
+                        <!-- Smart Dark -->
+                        <button class="mode-card active rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="smart-dark" style="background: rgba(22,27,34,0.8);">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(59,130,246,0.12);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                                </div>
+                                <!-- Mini preview -->
+                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-smart"></div>
+                            </div>
+                            <div class="mode-name text-sm font-semibold text-ui-text">Smart Dark</div>
+                            <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Dark bg, bright text</div>
+                        </button>
+
+                        <!-- Original -->
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="original" style="background: rgba(22,27,34,0.8);">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                </div>
+                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-original"></div>
+                            </div>
+                            <div class="mode-name text-sm font-semibold text-ui-text">Original</div>
+                            <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Default rendering</div>
+                        </button>
+
+                        <!-- True Invert -->
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="true-invert" style="background: rgba(22,27,34,0.8);">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(239,68,68,0.1);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg>
+                                </div>
+                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-invert"></div>
+                            </div>
+                            <div class="mode-name text-sm font-semibold text-ui-text">True Invert</div>
+                            <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Full color flip</div>
+                        </button>
+
+                        <!-- Grayscale -->
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="grayscale" style="background: rgba(22,27,34,0.8);">
+                            <div class="flex items-center gap-2 mb-2.5">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>
+                                </div>
+                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-gray"></div>
+                            </div>
+                            <div class="mode-name text-sm font-semibold text-ui-text">Grayscale</div>
+                            <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Remove all color</div>
+                        </button>
+
+                        <!-- High Contrast (full width) -->
+                        <button class="mode-card col-span-2 rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="high-contrast" style="background: rgba(22,27,34,0.8);">
+                            <div class="flex items-center gap-3">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background: rgba(255,255,255,0.06);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M12 2v20"/></svg>
+                                </div>
+                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-contrast"></div>
+                                <div class="text-left">
+                                    <div class="mode-name text-sm font-semibold text-ui-text">High Contrast</div>
+                                    <div class="text-[10px] text-ui-textMuted">Maximum legibility</div>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Adjustments -->
+                <div class="px-4 pb-4" style="border-top: 1px solid rgba(48,54,61,0.5);">
+                    <div class="text-[10px] font-semibold tracking-widest text-ui-textSubtle uppercase mb-3 pt-4 px-0.5">Adjustments</div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-medium text-ui-textMuted">Brightness</span>
+                                <span id="brightness-val" class="text-xs font-mono text-nivra-accent tabular-nums">100%</span>
+                            </div>
+                            <input type="range" id="brightness-slider" min="50" max="150" value="100" class="w-full">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-medium text-ui-textMuted">Contrast</span>
+                                <span id="contrast-val" class="text-xs font-mono text-nivra-accent tabular-nums">100%</span>
+                            </div>
+                            <input type="range" id="contrast-slider" min="50" max="150" value="100" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-4 py-3 flex justify-between items-center" style="border-top: 1px solid rgba(48,54,61,0.5); background: rgba(13,17,23,0.4);">
+                    <button id="btn-reset-appearance" class="text-xs font-medium text-ui-textMuted hover:text-ui-text transition-colors">↺ Reset</button>
+                    <div class="text-[10px] text-ui-textSubtle">Nivra Visual Engine v1</div>
+                </div>
+            </div>
+        </div>
+    </div><!-- end bottom toolbar -->
+
+    <!-- ================================================
+         ERROR OVERLAY
+         ================================================ -->
+    <div id="error-log" class="absolute inset-0 z-50 flex-col items-center justify-center hidden" style="background: #0D1117;">
+        <div class="text-red-400 mb-5">
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <h2 class="text-lg font-semibold text-ui-text mb-2">Could not render PDF</h2>
+        <p id="error-message" class="text-ui-textMuted mb-6 max-w-md text-center text-sm leading-relaxed"></p>
+        <button onclick="location.reload()" class="px-5 py-2 rounded-lg text-sm font-medium transition-colors text-white hover:opacity-90" style="background: #21262D; border: 1px solid #30363D;">
+            Try Again
+        </button>
+    </div>
+
+    <script type="module" src="viewer.js"></script>
+</body>
+</html>
