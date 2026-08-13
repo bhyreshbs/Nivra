@@ -63,9 +63,12 @@ export function clearOpListCache() { _cache.clear(); }
 
 /**
  * @typedef {Object} PageAnalysis
- * @property {Array<{ctm:number[]}>} imageOps  — image paints with their CTM
+ * @property {Array<{ctm:number[], opIndex:number}>} imageOps
+ *          — image paints with their CTM and operator-list index
  * @property {number} textOps                  — showText op count
  * @property {number} vectorOps                — path/stroke/fill op count
+ * @property {Array<{rect:number[], opIndex:number}>} vectorPaints
+ *          — vector paint boxes in PDF user space + paint op index
  * @property {Array<{rect:number[], color:number[]|null}>} bgFills
  *          — fills (rect in PDF user space + color), for background detection
  */
@@ -93,27 +96,38 @@ export function getPageAnalysis(pdfPage) {
  * @returns {Array<{x,y,width,height}>}
  */
 export function imageOpsToRects(imageOps, viewport) {
+  return imageOpsToQuads(imageOps, viewport).map(({ bounds }) => ({ ...bounds }));
+}
+
+/**
+ * Convert image ops to exact CSS-pixel quads plus bounds.
+ *
+ * @param {Array<{ctm:number[], opIndex?:number}>} imageOps
+ * @param {PageViewport} viewport
+ * @returns {Array<{points:Array<{x:number,y:number}>, bounds:{x:number,y:number,width:number,height:number}, opIndex?:number}>}
+ */
+export function imageOpsToQuads(imageOps, viewport) {
   const vt  = viewport.transform;   // PDF user space → CSS px
   const vpW = viewport.width;
   const vpH = viewport.height;
-  const rects = [];
+  const quads = [];
 
-  for (const { ctm } of imageOps) {
+  for (const { ctm, opIndex } of imageOps) {
     const [a, b, c, d, e, f] = ctm;
 
     // Image occupies the unit square [0,0]–[1,1] in its own space.
-    const corners = [
+    const points = [
       [e,         f        ],
       [a + e,     b + f    ],
       [a + c + e, b + d + f],
       [c + e,     d + f    ],
-    ].map(([px, py]) => [
-      vt[0] * px + vt[2] * py + vt[4],
-      vt[1] * px + vt[3] * py + vt[5],
-    ]);
+    ].map(([px, py]) => ({
+      x: vt[0] * px + vt[2] * py + vt[4],
+      y: vt[1] * px + vt[3] * py + vt[5],
+    }));
 
-    const xs = corners.map(p => p[0]);
-    const ys = corners.map(p => p[1]);
+    const xs = points.map(p => p.x);
+    const ys = points.map(p => p.y);
     const x = Math.min(...xs);
     const y = Math.min(...ys);
     const w = Math.max(...xs) - x;
@@ -121,13 +135,57 @@ export function imageOpsToRects(imageOps, viewport) {
 
     if (w < MIN_IMAGE_PX || h < MIN_IMAGE_PX) continue;
 
-    // Clamp to viewport (1px margin to avoid hairline seams)
+    // Clamp bounds to viewport with a tiny float margin but keep the exact quad.
     const cx = Math.max(-1, x);
     const cy = Math.max(-1, y);
     const cw = Math.min(w - (cx - x), vpW - cx + 1);
     const ch = Math.min(h - (cy - y), vpH - cy + 1);
 
-    if (cw > 1 && ch > 1) rects.push({ x: cx, y: cy, width: cw, height: ch });
+    if (cw > 1 && ch > 1) {
+      quads.push({
+        points,
+        bounds: { x: cx, y: cy, width: cw, height: ch },
+        opIndex,
+      });
+    }
+  }
+
+  return quads;
+}
+
+/**
+ * Convert PDF-space rect records to CSS-pixel rects for the given viewport.
+ *
+ * @param {Array<{rect:number[], opIndex:number}>} rectOps
+ * @param {PageViewport} viewport
+ * @returns {Array<{x:number,y:number,width:number,height:number,opIndex:number}>}
+ */
+export function rectOpsToRects(rectOps, viewport) {
+  const vt  = viewport.transform;
+  const vpW = viewport.width;
+  const vpH = viewport.height;
+  const rects = [];
+
+  for (const { rect, opIndex } of rectOps) {
+    const [x, y, w, h] = rect;
+    const corners = [
+      [x,     y    ],
+      [x + w, y    ],
+      [x,     y + h],
+      [x + w, y + h],
+    ].map(([px, py]) => [
+      vt[0] * px + vt[2] * py + vt[4],
+      vt[1] * px + vt[3] * py + vt[5],
+    ]);
+
+    const xs = corners.map(p => p[0]);
+    const ys = corners.map(p => p[1]);
+    const cx = Math.max(-1, Math.min(...xs));
+    const cy = Math.max(-1, Math.min(...ys));
+    const cw = Math.min(Math.max(...xs) - Math.min(...xs), vpW - cx + 1);
+    const ch = Math.min(Math.max(...ys) - Math.min(...ys), vpH - cy + 1);
+
+    if (cw > 1 && ch > 1) rects.push({ x: cx, y: cy, width: cw, height: ch, opIndex });
   }
 
   return rects;
@@ -145,6 +203,7 @@ function _analyzeOps(ops) {
   const { fnArray, argsArray } = ops;
 
   const imageOps = [];
+  const vectorPaints = [];
   const bgFills  = [];
   let textOps   = 0;
   let vectorOps = 0;
@@ -169,7 +228,7 @@ function _analyzeOps(ops) {
 
       case OPS_PAINT_IMAGE_XOBJECT:
       case OPS_PAINT_INLINE_IMAGE:
-        imageOps.push({ ctm: ctm.slice() });
+        imageOps.push({ ctm: ctm.slice(), opIndex: i });
         break;
 
       case OPS_PAINT_INLINE_IMAGE_GROUP: {
@@ -177,7 +236,7 @@ function _analyzeOps(ops) {
         const map = argsArray[i]?.[1];
         if (Array.isArray(map)) {
           for (const entry of map) {
-            if (entry?.transform) imageOps.push({ ctm: _matMul(ctm, entry.transform) });
+            if (entry?.transform) imageOps.push({ ctm: _matMul(ctm, entry.transform), opIndex: i });
           }
         }
         break;
@@ -189,7 +248,10 @@ function _analyzeOps(ops) {
         if (a && Array.isArray(a[3])) {
           const [, sx, sy, positions] = a;
           for (let p = 0; p + 1 < positions.length; p += 2) {
-            imageOps.push({ ctm: _matMul(ctm, [sx, 0, 0, sy, positions[p], positions[p + 1]]) });
+            imageOps.push({
+              ctm: _matMul(ctm, [sx, 0, 0, sy, positions[p], positions[p + 1]]),
+              opIndex: i,
+            });
           }
         }
         break;
@@ -243,6 +305,12 @@ function _analyzeOps(ops) {
                    Math.max(...rys) - Math.min(...rys)],
             color: fillColor,
           });
+          vectorPaints.push({
+            rect: [Math.min(...rxs), Math.min(...rys),
+                   Math.max(...rxs) - Math.min(...rxs),
+                   Math.max(...rys) - Math.min(...rys)],
+            opIndex: i,
+          });
         }
         pendingPathRect = null;
         break;
@@ -250,6 +318,25 @@ function _analyzeOps(ops) {
 
       case OPS_STROKE:
       case OPS_CLOSE_STROKE:
+        vectorOps++;
+        if (pendingPathRect) {
+          const [x0, y0, x1, y1] = pendingPathRect;
+          const [a2, b2, c2, d2, e2, f2] = ctm;
+          const cs = [[x0,y0],[x1,y0],[x0,y1],[x1,y1]].map(([px,py]) => [
+            a2*px + c2*py + e2, b2*px + d2*py + f2,
+          ]);
+          const rxs = cs.map(p => p[0]);
+          const rys = cs.map(p => p[1]);
+          vectorPaints.push({
+            rect: [Math.min(...rxs), Math.min(...rys),
+                   Math.max(...rxs) - Math.min(...rxs),
+                   Math.max(...rys) - Math.min(...rys)],
+            opIndex: i,
+          });
+        }
+        pendingPathRect = null;
+        break;
+
       case OPS_ENDPATH:
         vectorOps++;
         pendingPathRect = null;
@@ -264,7 +351,7 @@ function _analyzeOps(ops) {
     }
   }
 
-  return { imageOps, textOps, vectorOps, bgFills };
+  return { imageOps, textOps, vectorOps, vectorPaints, bgFills };
 }
 
 /**

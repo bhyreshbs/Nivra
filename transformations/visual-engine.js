@@ -6,9 +6,9 @@
  * ─── Modes ───────────────────────────────────────────────────────────────────
  *   smart-dark    → smart-dark/index.js — per-page, document-aware filter on
  *                   .canvasWrapper + photographic-image preservation overlay
- *   true-invert   → CSS filter on #viewerWrapper: invert(100%)
- *   grayscale     → CSS filter on #viewerWrapper: grayscale(100%)
- *   high-contrast → CSS filter on #viewerWrapper: contrast/brightness/saturate
+ *   true-invert   → CSS filter on #viewer: invert(100%)
+ *   grayscale     → CSS filter on #viewer: grayscale(100%)
+ *   high-contrast → CSS filter on #viewer: contrast/brightness/saturate
  *   original      → no filter
  *
  * ─── What this file does NOT do ──────────────────────────────────────────────
@@ -31,7 +31,7 @@ const CSS_FILTER = {
   'high-contrast':'contrast(180%) brightness(0.9) saturate(1.2)',
 };
 
-const MODE_CLASSES = ['mode-smart-dark', 'mode-true-invert', 'mode-grayscale', 'mode-high-contrast'];
+const MODE_CLASSES = ['mode-smart-dark'];
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let _mode       = 'smart-dark';
@@ -116,14 +116,16 @@ function _bindUIControls() {
 
 function _applyMode(mode, cards) {
   const wrapper = document.getElementById('viewerWrapper');
-  if (!wrapper) return;
+  const viewer = document.getElementById('viewer');
+  if (!wrapper || !viewer) return;
 
   const prev = _mode;
   _mode = mode;
 
-  // 1. Clear all mode classes + any leftover wrapper filter
+  // 1. Clear all mode classes + any leftover PDF-layer filter
   MODE_CLASSES.forEach(c => wrapper.classList.remove(c));
   wrapper.style.filter = '';
+  viewer.style.filter = '';
 
   // 2. Deactivate previous mode
   if (prev === 'smart-dark') {
@@ -137,13 +139,14 @@ function _applyMode(mode, cards) {
   } else if (mode === 'original') {
     // Nothing to apply — already cleared above
   } else {
-    // CSS filter modes (global by design — no image intelligence)
+    // CSS filter modes on the PDF layer only, so the surrounding viewer shell
+    // stays visually stationary regardless of the selected appearance mode.
     const parts = [
       CSS_FILTER[mode]  || '',
       _brightness !== 100 ? `brightness(${_brightness / 100})` : '',
       _contrast   !== 100 ? `contrast(${_contrast   / 100})` : '',
     ].filter(Boolean);
-    wrapper.style.filter = parts.join(' ');
+    viewer.style.filter = parts.join(' ');
   }
 
   // 4. Update card UI
@@ -158,7 +161,8 @@ function _applyMode(mode, cards) {
 
 function _applyAdjustments() {
   const wrapper = document.getElementById('viewerWrapper');
-  if (!wrapper) return;
+  const viewer = document.getElementById('viewer');
+  if (!wrapper || !viewer) return;
 
   if (_mode === 'smart-dark') {
     SmartDark.updateAdjustments(wrapper, _brightness, _contrast);
@@ -168,6 +172,6 @@ function _applyAdjustments() {
       _brightness !== 100 ? `brightness(${_brightness / 100})` : '',
       _contrast   !== 100 ? `contrast(${_contrast   / 100})` : '',
     ].filter(Boolean);
-    wrapper.style.filter = parts.join(' ');
+    viewer.style.filter = parts.join(' ');
   }
 }

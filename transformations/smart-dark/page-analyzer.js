@@ -16,10 +16,10 @@
  *                → invert as a unit, but do NOT carve image overlays out of it
  *
  * Image level (per detected image rect):
- *   'photographic'   — rich mid-tones / saturated color → PRESERVE via overlay
- *   'document-like'  — mostly white/light, low saturation (letterhead scans,
- *                      table snapshots, watermarks) → let it invert with the
- *                      page so it becomes dark instead of a glaring white box
+ *   'photographic'    — preserve via overlay
+ *   'document-like'   — invert with the page
+ *   'content-underlay'— invert with the page because actual text/vector content
+ *                       overlaps the image and must stay visually coherent
  *
  * Results are cached per page and reused across zoom/mode toggles.
  */
@@ -179,6 +179,38 @@ export function classifyImage(stats) {
   }
 
   return 'photographic';
+}
+
+/**
+ * Decide whether an image should be preserved after considering overlap with
+ * real document content rendered on top of it.
+ *
+ * @param {RegionStats|null} stats
+ * @param {Object} overlap
+ * @param {number} overlap.textSpanHits
+ * @param {number} overlap.textOverlapArea
+ * @param {number} overlap.vectorHits
+ * @param {number} overlap.vectorOverlapArea
+ * @param {number} overlap.imageArea
+ * @returns {'photographic'|'document-like'|'content-underlay'}
+ */
+export function classifyImageWithOverlap(stats, overlap) {
+  const imageArea = Math.max(1, overlap?.imageArea || 1);
+  const textRatio = (overlap?.textOverlapArea || 0) / imageArea;
+  const vectorRatio = (overlap?.vectorOverlapArea || 0) / imageArea;
+
+  // Actual document content is painted over this image. It must participate in
+  // the same Smart Dark transform as the surrounding document, otherwise the
+  // overlaid text/lines land on a preserved light patch and become unreadable.
+  if ((overlap?.textSpanHits || 0) >= 2) return 'content-underlay';
+  if ((overlap?.textSpanHits || 0) >= 1 && textRatio >= 0.01) return 'content-underlay';
+  if ((overlap?.vectorHits || 0) >= 2 && vectorRatio >= 0.015) return 'content-underlay';
+  if (((overlap?.textSpanHits || 0) + (overlap?.vectorHits || 0)) >= 2 &&
+      (textRatio + vectorRatio) >= 0.012) {
+    return 'content-underlay';
+  }
+
+  return classifyImage(stats);
 }
 
 // ─── Internal ────────────────────────────────────────────────────────────────

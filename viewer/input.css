@@ -11,7 +11,7 @@
   --color-nivra-glow:        rgba(59, 130, 246, 0.3);
 
   /* UI Chrome — dark by default */
-  --color-ui-bg:          #0D1117;
+  --color-ui-bg:          #606066;
   --color-ui-surface:     #161B22;
   --color-ui-surfaceHover:#1C2128;
   --color-ui-border:      #30363D;
@@ -34,7 +34,7 @@
     font-family: 'Inter', 'Segoe UI', sans-serif;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
-    background: #0D1117;
+    background: #606066;
     color: #E6EDF3;
   }
 
@@ -79,10 +79,6 @@
    ========================================= */
 @layer components {
 
-  /* Toggle Switch */
-  .toggle-checkbox:checked { right: 0; border-color: #3B82F6; }
-  .toggle-checkbox:checked + .toggle-label { background-color: #3B82F6; }
-
   /* Popovers */
   .popover {
     opacity: 0; visibility: hidden; transform: translateY(8px) scale(0.98);
@@ -98,15 +94,244 @@
      VIEWER LAYOUT
      ============================================= */
   #viewerWrapper {
+    --sidebar-width: 228px;
     flex: 1;
+    display: flex;
     position: relative;
     overflow: hidden;
-    background: #060B10;
+    background: #606066;
+  }
+
+  #viewerWrapper.sidebar-open #thumbnail-sidebar {
+    width: var(--sidebar-width);
+    border-right: 1px solid rgba(48,54,61,0.72);
+    box-shadow: 8px 0 24px rgba(0,0,0,0.16);
+  }
+
+  #viewerWrapper.sidebar-open #sidebar-toggle {
+    left: calc(var(--sidebar-width) - 48px);
+  }
+
+  #sidebar-toggle {
+    position: absolute;
+    top: 16px;
+    left: 14px;
+    z-index: 45;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(24,26,30,0.98);
+    color: rgba(230,237,243,0.92);
+    border: 1px solid rgba(48,54,61,0.72);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.16);
+    transition: left 0.2s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  #sidebar-toggle:hover {
+    background: rgba(31,34,39,0.98);
+    border-color: rgba(96,165,250,0.32);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .sidebar-toggle-icon {
+    position: absolute;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .sidebar-toggle-icon-expand {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  #sidebar-toggle[aria-expanded="false"] .sidebar-toggle-icon-expand {
+    opacity: 1;
+    transform: scale(1);
+  }
+  #sidebar-toggle[aria-expanded="false"] .sidebar-toggle-icon-collapse {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  #thumbnail-sidebar {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    background: transparent;
+    z-index: 40;
+  }
+
+  #thumbnail-sidebar-inner {
+    width: var(--sidebar-width);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: rgba(22,24,29,0.97);
+  }
+
+  #thumbnail-sidebar-header {
+    min-height: 68px;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid rgba(48,54,61,0.72);
+  }
+
+  #thumbnail-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px 10px 12px;
+  }
+
+  #thumbnail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .thumbnail-item {
+    width: 100%;
+  }
+
+  .thumbnail-button {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 10px 8px;
+    border-radius: 14px;
+    background: rgba(31,35,41,0.82);
+    border: 1px solid rgba(48,54,61,0.62);
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .thumbnail-button:hover {
+    background: rgba(38,42,49,0.92);
+    border-color: rgba(96,165,250,0.22);
+  }
+
+  .thumbnail-button.is-active {
+    border-color: rgba(96,165,250,0.78);
+    box-shadow: 0 0 0 1px rgba(59,130,246,0.35);
+    background: rgba(36,41,49,0.95);
+  }
+
+  .thumbnail-canvas-wrap {
+    width: 100%;
+    min-height: 156px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(10,12,15,0.5);
+    overflow: hidden;
+  }
+
+  .thumbnail-canvas-wrap canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+  }
+
+  .thumbnail-placeholder {
+    color: #7D8590;
+    font-size: 12px;
+  }
+
+  .thumbnail-page-label {
+    font-size: 12px;
+    line-height: 1.2;
+    color: #A6ACB5;
+  }
+
+  #sidebar-controls {
+    flex: 0 0 auto;
+    padding: 12px 12px 14px;
+    border-top: 1px solid rgba(48,54,61,0.72);
+    background: rgba(18,20,24,0.98);
+  }
+
+  #btn-two-page-view {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: rgba(36,36,36,0.96);
+    color: #E6EDF3;
+    border: 1px solid rgba(48,54,61,0.58);
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  #btn-two-page-view:hover {
+    background: rgba(40,40,40,0.98);
+    border-color: rgba(96,165,250,0.22);
+  }
+
+  #btn-two-page-view[aria-pressed="true"] {
+    border-color: rgba(96,165,250,0.42);
+    background: rgba(40,40,40,0.98);
+  }
+  .sidebar-toggle-label-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .sidebar-toggle-label-group span {
+    white-space: nowrap;
+  }
+  .sidebar-toggle-label-group svg {
+    flex: 0 0 auto;
+    color: #C9D1D9;
+  }
+  .sidebar-toggle-switch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    background: rgba(92, 92, 92, 0.9);
+    transition: background-color 0.18s ease;
+  }
+  .sidebar-toggle-switch-knob {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+    transform: translateX(0);
+    transition: transform 0.18s ease;
+  }
+  #btn-two-page-view[aria-pressed="true"] .sidebar-toggle-switch {
+    background: #5DA9FF;
+  }
+  #btn-two-page-view[aria-pressed="true"] .sidebar-toggle-switch-knob {
+    transform: translateX(16px);
+  }
+
+  #viewerStage {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
   }
 
   #viewerContainer {
     position: absolute; top: 0; bottom: 0; left: 0; right: 0;
     overflow: auto; outline: none;
+    scroll-behavior: smooth;
   }
 
   #viewer.pdfViewer {
@@ -130,7 +355,7 @@
      hues approximately intact.
      ============================================= */
   #viewerWrapper.mode-smart-dark {
-    background: #060B10;
+    background: #606066;
   }
   #viewerWrapper.mode-smart-dark .pdfViewer {
     background: transparent;
@@ -142,7 +367,7 @@
 
   /*
    * Smart Dark rendering pipeline:
-   *   #viewerWrapper  ← CSS filter: invert(100%) hue-rotate(180deg)  [applied in JS]
+   *   .canvasWrapper  ← Smart Dark per-page filter                    [applied in JS]
    *   .page canvas    ← PDF.js high-resolution render (UNTOUCHED)
    *   .nivra-image-overlay ← counter-filter overlay that restores image regions
    *   .textLayer      ← text selection (z-index:2, not affected by our overlay)
@@ -164,17 +389,19 @@
     background: rgba(59,130,246,0.4);
   }
 
-  /* True Invert — apply to whole viewer wrapper */
-  #viewerWrapper.mode-true-invert { filter: invert(100%); }
+  /* Brightness / Contrast adjustments layer (composited via JS on #viewer). */
 
-  /* Grayscale */
-  #viewerWrapper.mode-grayscale { filter: grayscale(100%); }
+  @media (max-width: 900px) {
+    #viewerWrapper {
+      --sidebar-width: 204px;
+    }
 
-  /* High Contrast */
-  #viewerWrapper.mode-high-contrast { filter: contrast(180%) brightness(0.9) saturate(1.2); }
+    #thumbnail-scroll {
+      padding-inline: 8px;
+    }
 
-  /* Brightness / Contrast adjustments layer (composited via CSS variable) */
-  #viewerWrapper {
-    --adj: none;
+    .thumbnail-button {
+      padding-inline: 8px;
+    }
   }
 }

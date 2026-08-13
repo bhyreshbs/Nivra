@@ -36,9 +36,11 @@
  *   ✗  synchronous analysis before first paint
  */
 
-import { getPageAnalysis, imageOpsToRects, clearOpListCache } from './operator-analyzer.js';
 import {
-  probePage, probeRegion, regionStats, classifyPage, classifyImage, clearProbeCache,
+  getPageAnalysis, imageOpsToRects, imageOpsToQuads, rectOpsToRects, clearOpListCache,
+} from './operator-analyzer.js';
+import {
+  probePage, probeRegion, regionStats, classifyPage, classifyImageWithOverlap, clearProbeCache,
 } from './page-analyzer.js';
 import { updateImageOverlay, removeImageOverlay, removeAllImageOverlays } from './image-protector.js';
 import { buildSmartDarkFilter, buildCounterFilter } from './fallback.js';
@@ -61,15 +63,19 @@ const _decisionCache = new Map();
 // In-flight analysis dedup (pageNumber → true).
 const _inFlight = new Set();
 
+// pageNumber → number of deferred re-analysis attempts waiting for text boxes.
+const _textRetryCount = new Map();
+
 /**
  * @typedef {Object} PageDecision
  * @property {'normal'|'dark-bg'|'scanned'} pageClass
- * @property {Array<{ctm:number[]}>} photographicOps — subset of imageOps to preserve
- * @property {Array<{ctm:number[]}>} invertedOps     — detected but inverted
+ * @property {Array<{ctm:number[], opIndex:number}>} photographicOps — subset of imageOps to preserve
+ * @property {Array<{ctm:number[], opIndex:number}>} invertedOps     — detected but inverted
  * @property {number} textOps
  * @property {number} vectorOps
  * @property {number} imageCoverage
  * @property {Object|null} pageStats
+ * @property {boolean} [needsTextRetry]
  */
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -83,6 +89,7 @@ export function setDocument(pdfDoc) {
   _pageViewports.clear();
   _decisionCache.clear();
   _inFlight.clear();
+  _textRetryCount.clear();
 }
 
 /**
@@ -201,7 +208,7 @@ async function _processPageAsync(pageNumber, viewport, pageEl, canvas) {
         // The canvas may have been swapped mid-render — use the live one.
         const liveCanvas = _getCanvas(pageEl) || canvas;
         if (!liveCanvas?.width || !pageEl.contains(liveCanvas)) return;
-        decision = _decide(pdfPage, analysis, vp, liveCanvas);
+        decision = _decide(pdfPage, analysis, vp, liveCanvas, pageEl);
         _decisionCache.set(pageNumber, decision);
       }
     }
@@ -211,6 +218,10 @@ async function _processPageAsync(pageNumber, viewport, pageEl, canvas) {
 
     const liveCanvas = _getCanvas(pageEl) || canvas;
     _updateOverlayForPage(pageNumber, pageEl, liveCanvas, decision, vp);
+
+    if (decision.needsTextRetry) {
+      _scheduleTextRetry(pageNumber, pageEl, liveCanvas, vp);
+    }
 
     DebugOverlay.renderDebugOverlay(pageEl, vp, {
       pageClass:      decision.pageClass,
@@ -231,8 +242,8 @@ async function _processPageAsync(pageNumber, viewport, pageEl, canvas) {
 /**
  * Combine operator evidence + pixel evidence into a PageDecision.
  */
-function _decide(pdfPage, analysis, viewport, canvas) {
-  const { imageOps, textOps, vectorOps, bgFills } = analysis;
+function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
+  const { imageOps, textOps, vectorOps, vectorPaints, bgFills } = analysis;
   const vpW = viewport.width, vpH = viewport.height;
   const pageArea = vpW * vpH;
 
@@ -262,6 +273,21 @@ function _decide(pdfPage, analysis, viewport, canvas) {
   if (pageClass === 'normal' && _preserveImages) {
     const dprX = canvas.width / vpW;
     const dprY = canvas.height / vpH;
+    const textRects   = _getTextRects(pageEl);
+    const vectorRects = rectOpsToRects(vectorPaints, viewport);
+    if (textOps > 0 && textRects.length === 0) {
+      invertedOps.push(...imageOps);
+      return {
+        pageClass,
+        photographicOps,
+        invertedOps,
+        textOps,
+        vectorOps,
+        imageCoverage,
+        pageStats,
+        needsTextRetry: true,
+      };
+    }
     imageOps.forEach((op, idx) => {
       const r = rects[idx];
       if (!r) { invertedOps.push(op); return; }
@@ -272,7 +298,10 @@ function _decide(pdfPage, analysis, viewport, canvas) {
         canvas,
         r.x * dprX, r.y * dprY, r.width * dprX, r.height * dprY,
       ));
-      (classifyImage(stats) === 'photographic' ? photographicOps : invertedOps).push(op);
+      const overlap = _measureContentOverlap(r, op.opIndex, textRects, vectorRects);
+      (classifyImageWithOverlap(stats, overlap) === 'photographic'
+        ? photographicOps
+        : invertedOps).push(op);
     });
   } else {
     invertedOps.push(...imageOps);
@@ -288,7 +317,7 @@ function _decide(pdfPage, analysis, viewport, canvas) {
 function _updateOverlayForPage(pageNumber, pageEl, canvas, decision, viewport = null) {
   if (!decision || !canvas?.width) return;
 
-  const vp = viewport ?? _pageViewports.get(pageNumber) ?? _reconstructViewport(pageEl);
+  const vp = viewport ?? _pageViewports.get(pageNumber) ?? null;
   if (!vp) return;
 
   if (decision.pageClass !== 'normal' || !decision.photographicOps.length) {
@@ -296,8 +325,8 @@ function _updateOverlayForPage(pageNumber, pageEl, canvas, decision, viewport = 
     return;
   }
 
-  const rects = imageOpsToRects(decision.photographicOps, vp);
-  updateImageOverlay(pageEl, canvas, rects, vp, buildCounterFilter(_brightness, _contrast));
+  const regions = imageOpsToQuads(decision.photographicOps, vp);
+  updateImageOverlay(pageEl, canvas, regions, vp, buildCounterFilter(_brightness, _contrast));
 }
 
 /**
@@ -317,6 +346,78 @@ function _reconstructViewport(pdfPage, pageEl) {
   } catch (_) {
     return null;
   }
+}
+
+function _getTextRects(pageEl) {
+  if (!pageEl) return [];
+  const pageBox = pageEl.getBoundingClientRect();
+  const textRects = [];
+  for (const span of pageEl.querySelectorAll('.textLayer span')) {
+    const text = span.textContent?.trim();
+    if (!text) continue;
+    const box = span.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) continue;
+    textRects.push({
+      x: box.left - pageBox.left,
+      y: box.top - pageBox.top,
+      width: box.width,
+      height: box.height,
+    });
+  }
+  return textRects;
+}
+
+function _measureContentOverlap(imageRect, imageOpIndex, textRects, vectorRects) {
+  let textSpanHits = 0;
+  let textOverlapArea = 0;
+  for (const textRect of textRects) {
+    const area = _intersectionArea(imageRect, textRect);
+    if (area > 0) {
+      textSpanHits++;
+      textOverlapArea += area;
+    }
+  }
+
+  let vectorHits = 0;
+  let vectorOverlapArea = 0;
+  for (const vectorRect of vectorRects) {
+    if (vectorRect.opIndex <= imageOpIndex) continue;
+    const area = _intersectionArea(imageRect, vectorRect);
+    if (area > 0) {
+      vectorHits++;
+      vectorOverlapArea += area;
+    }
+  }
+
+  return {
+    textSpanHits,
+    textOverlapArea,
+    vectorHits,
+    vectorOverlapArea,
+    imageArea: imageRect.width * imageRect.height,
+  };
+}
+
+function _intersectionArea(a, b) {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+  return right > left && bottom > top ? (right - left) * (bottom - top) : 0;
+}
+
+function _scheduleTextRetry(pageNumber, pageEl, canvas, viewport) {
+  const attempts = _textRetryCount.get(pageNumber) || 0;
+  if (attempts >= 2) return;
+  _textRetryCount.set(pageNumber, attempts + 1);
+
+  setTimeout(() => {
+    if (!_isActive || !pageEl.isConnected) return;
+    _decisionCache.delete(pageNumber);
+    const liveCanvas = _getCanvas(pageEl) || canvas;
+    if (!liveCanvas?.width) return;
+    _processPageAsync(pageNumber, viewport, pageEl, liveCanvas);
+  }, 180);
 }
 
 function _getCanvas(pageEl) {
@@ -352,4 +453,3 @@ window.addEventListener('nivra:debug-refresh', () => {
     if (canvas?.width) _processPageAsync(pn, null, pageEl, canvas);
   });
 });
-

@@ -44,15 +44,16 @@ export const OVERLAY_CLASS = 'nivra-image-overlay';
  *
  * @param {Element}           pageEl        — the .page div
  * @param {HTMLCanvasElement} mainCanvas    — PDF.js main canvas (physical px)
- * @param {Array<{x,y,width,height}>} rects — image boxes in CSS px (viewport space)
+ * @param {Array<{points:Array<{x:number,y:number}>,bounds:{x:number,y:number,width:number,height:number}}>} regions
+ *                                          — exact image quads in CSS px (viewport space)
  * @param {PageViewport}      viewport      — viewport used for this render
  * @param {string}            counterFilter — exact inverse of the wrapper filter
  */
-export function updateImageOverlay(pageEl, mainCanvas, rects, viewport, counterFilter) {
+export function updateImageOverlay(pageEl, mainCanvas, regions, viewport, counterFilter) {
   removeImageOverlay(pageEl);
 
   const wrapper = pageEl?.querySelector('.canvasWrapper');
-  if (!wrapper || !rects.length || !mainCanvas?.width || !mainCanvas?.height) return;
+  if (!wrapper || !regions.length || !mainCanvas?.width || !mainCanvas?.height) return;
   if (!viewport?.width || !viewport?.height) return;
 
   // Exact physical/CSS ratio for THIS render (any zoom, any DPR).
@@ -79,20 +80,40 @@ export function updateImageOverlay(pageEl, mainCanvas, rects, viewport, counterF
   if (!ctx) return;
 
   let painted = false;
-  for (const { x, y, width, height } of rects) {
-    const sx = Math.round(x * dprX);
-    const sy = Math.round(y * dprY);
-    const sw = Math.round(width  * dprX);
-    const sh = Math.round(height * dprY);
+  for (const { points } of regions) {
+    if (!points?.length) continue;
 
-    const cx = Math.max(0, Math.min(sx, mainCanvas.width));
-    const cy = Math.max(0, Math.min(sy, mainCanvas.height));
-    const cw = Math.max(0, Math.min(sw, mainCanvas.width  - cx));
-    const ch = Math.max(0, Math.min(sh, mainCanvas.height - cy));
-    if (cw <= 0 || ch <= 0) continue;
+    const quad = points.map(({ x, y }) => ({
+      x: x * dprX,
+      y: y * dprY,
+    }));
 
-    // Source = destination: the same physical rect on the main canvas.
-    ctx.drawImage(mainCanvas, cx, cy, cw, ch, cx, cy, cw, ch);
+    const minX = Math.min(...quad.map(p => p.x));
+    const minY = Math.min(...quad.map(p => p.y));
+    const maxX = Math.max(...quad.map(p => p.x));
+    const maxY = Math.max(...quad.map(p => p.y));
+
+    const sx = Math.max(0, Math.floor(minX) - 1);
+    const sy = Math.max(0, Math.floor(minY) - 1);
+    const ex = Math.min(mainCanvas.width, Math.ceil(maxX) + 1);
+    const ey = Math.min(mainCanvas.height, Math.ceil(maxY) + 1);
+    const sw = ex - sx;
+    const sh = ey - sy;
+    if (sw <= 0 || sh <= 0) continue;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(quad[0].x, quad[0].y);
+    for (let i = 1; i < quad.length; i += 1) {
+      ctx.lineTo(quad[i].x, quad[i].y);
+    }
+    ctx.closePath();
+    ctx.clip();
+
+    // Copy from the same physical pixel space as the PDF.js canvas while the
+    // exact clip path eliminates ghost edges from rounded bounding-box blits.
+    ctx.drawImage(mainCanvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    ctx.restore();
     painted = true;
   }
 
