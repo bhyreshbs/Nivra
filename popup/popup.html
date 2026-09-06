@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nivra</title>
+  <style>
+    /* ─── Reset & Base ──────────────────────────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('../viewer/fonts/inter/Inter-VariableFont_opsz,wght.woff2') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    body {
+      width: 320px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #2D3039;
+      color: #FFFFFF;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+    }
+
+    /* ─── Header ────────────────────────────────────────────────────────── */
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(180deg, rgba(58, 62, 72, 0.6) 0%, transparent 100%);
+    }
+
+    .popup-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .popup-header-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .popup-title {
+      font-size: 15px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      color: #FFFFFF;
+    }
+
+    .popup-version {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #93C5FD;
+      background: rgba(59, 130, 246, 0.2);
+      vertical-align: middle;
+      transform: translateY(-1px);
+    }
+
+    .popup-subtitle {
+      font-size: 11px;
+      color: #B0B8C4;
+      margin-top: 2px;
+    }
+
+    /* ─── Status Card ───────────────────────────────────────────────────── */
+    .popup-section {
+      padding: 14px 20px;
+    }
+
+    .status-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+
+    .status-card.active {
+      border-color: rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6B7280;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+      flex-shrink: 0;
+    }
+
+    .status-indicator.on {
+      background: #3FB950;
+      box-shadow: 0 0 8px rgba(63, 185, 80, 0.45);
+    }
+
+    .status-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .status-detail {
+      font-size: 10px;
+      color: #A0A8B4;
+      margin-top: 1px;
+    }
+
+    /* ─── Toggle Switch ─────────────────────────────────────────────────── */
+    .toggle-switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-switch input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: #4B5260;
+      transition: background 0.25s ease;
+    }
+
+    .toggle-switch input:checked + .toggle-track {
+      background: #3B82F6;
+    }
+
+    .toggle-knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .toggle-switch input:checked ~ .toggle-knob {
+      transform: translateX(18px);
+    }
+
+    /* ─── Divider ───────────────────────────────────────────────────────── */
+    .popup-divider {
+      height: 1px;
+      margin: 0 20px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* ─── Action Buttons ────────────────────────────────────────────────── */
+    .action-list {
+      padding: 10px 20px 6px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8B93A0;
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: #E0E4EA;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+      text-align: left;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFFFFF;
+    }
+
+    .action-btn:active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .action-btn:disabled:hover {
+      background: transparent;
+      color: #E0E4EA;
+    }
+
+    .action-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .action-icon.blue { background: rgba(59, 130, 246, 0.15); color: #60A5FA; }
+    .action-icon.amber { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+    .action-icon.green { background: rgba(52, 211, 153, 0.15); color: #34D399; }
+
+    .action-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .action-text-primary {
+      font-size: 13px;
+      font-weight: 550;
+      color: #FFFFFF;
+      line-height: 1.3;
+    }
+
+    .action-text-secondary {
+      font-size: 10px;
+      color: #8B93A0;
+      margin-top: 1px;
+      line-height: 1.3;
+    }
+
+    .action-arrow {
+      color: #6B7280;
+      flex-shrink: 0;
+      transition: color 0.18s ease, transform 0.18s ease;
+    }
+
+    .action-btn:hover .action-arrow {
+      color: #B0B8C4;
+      transform: translateX(2px);
+    }
+
+    /* ─── Footer ────────────────────────────────────────────────────────── */
+    .popup-footer {
+      padding: 10px 20px 14px;
+      text-align: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .popup-footer-text {
+      font-size: 10px;
+      color: #6B7280;
+      letter-spacing: 0.02em;
+    }
+
+    .popup-footer-text a {
+      color: #8B93A0;
+      text-decoration: none;
+      transition: color 0.18s ease;
+    }
+
+    .popup-footer-text a:hover {
+      color: #B0B8C4;
+    }
+
+    /* ─── Animations ────────────────────────────────────────────────────── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    body > * {
+      animation: fadeIn 0.2s ease-out;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Header ──────────────────────────────────────────────────────── -->
+  <div class="popup-header">
+    <img class="popup-logo" src="../assets/Logo.png" alt="Nivra Logo">
+    <div class="popup-header-text">
+      <div class="popup-title">
+        Nivra
+        <span class="popup-version">v1.5.1</span>
+      </div>
+      <div class="popup-subtitle">PDF Viewer &amp; Visual Engine</div>
+    </div>
+  </div>
+
+  <!-- ─── Status Toggle ──────────────────────────────────────────────── -->
+  <div class="popup-section">
+    <div class="status-card active" id="status-card">
+      <div class="status-left">
+        <div class="status-indicator on" id="status-dot"></div>
+        <div>
+          <div class="status-label" id="status-label">Active</div>
+          <div class="status-detail" id="status-detail">Intercepting PDF files</div>
+        </div>
+      </div>
+      <label class="toggle-switch" title="Enable or disable PDF interception">
+        <input type="checkbox" id="toggle-enabled" checked>
+        <span class="toggle-track"></span>
+        <span class="toggle-knob"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="popup-divider"></div>
+
+  <!-- ─── Quick Actions ───────────────────────────────────────────────── -->
+  <div class="action-list">
+    <div class="section-label">Quick Actions</div>
+
+    <button class="action-btn" id="btn-open-in-nivra" disabled title="Open current tab's PDF in Nivra">
+      <div class="action-icon blue">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <path d="m10 13 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <div class="action-text-primary">Open in Nivra</div>
+        <div class="action-text-secondary" id="open-nivra-detail">No PDF detected in this tab</div>
+      </div>
+      <svg class="action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <button class="action-btn" id="btn-file-access">
+      <div class="action-icon amber">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <div class="action-text-primary">File URL Access</div>
+        <div class="action-text-secondary">Enable local PDF support</div>
+      </div>
+      <svg class="action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <button class="action-btn" id="btn-keyboard-shortcuts">
+      <div class="action-icon green">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2"/>
+          <path d="M6 10h0"/>
+          <path d="M10 10h0"/>
+          <path d="M14 10h0"/>
+          <path d="M18 10h0"/>
+          <path d="M8 14h8"/>
+        </svg>
+      </div>
+      <div class="action-text">
+        <div class="action-text-primary">Keyboard Shortcuts</div>
+        <div class="action-text-secondary">Ctrl+F search, Ctrl+B sidebar…</div>
+      </div>
+      <svg class="action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ─── Footer ──────────────────────────────────────────────────────── -->
+  <div class="popup-footer">
+    <div class="popup-footer-text">Nivra Visual Engine v1 · Built by <a href="#" id="footer-link">Bhyresh</a></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

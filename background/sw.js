@@ -12,29 +12,107 @@
  * explicitly enable "Allow access to file URLs" in the extension's settings page (chrome://extensions).
  * Without this permission, Chrome security policies prevent the extension from redirecting or reading
  * file:// URLs, meaning local PDFs will continue to open in Chrome's default viewer.
+ *
+ * ENABLE / DISABLE TOGGLE:
+ * The popup sends a { type: 'SET_ENABLED', enabled: bool } message via chrome.runtime.sendMessage.
+ * The service worker applies the rule immediately and persists state to chrome.storage.local.
+ * On browser startup / extension install, the stored state is read and re-applied.
  */
 
-chrome.runtime.onInstalled.addListener(() => {
+const RULE_ID = 1;
+const STORAGE_KEY = 'nivraEnabled';
+
+// ─── Rule builder ─────────────────────────────────────────────────────────────
+function _buildRedirectRule() {
   const extensionId = chrome.runtime.id;
-  
-  // Register a dynamic declarativeNetRequest rule
-  chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1], // Clear the rule if it exists
-    addRules: [
-      {
-        id: 1,
-        priority: 1,
-        action: {
-          type: "redirect",
-          redirect: {
-            regexSubstitution: `chrome-extension://${extensionId}/viewer/viewer.html?file=\\0`
-          }
-        },
-        condition: {
-          regexFilter: "^(https?|file|ftp):\\/\\/.*\\.pdf(?:\\?.*)?(?:#.*)?$",
-          resourceTypes: ["main_frame", "sub_frame"]
-        }
+  return {
+    id: RULE_ID,
+    priority: 1,
+    action: {
+      type: "redirect",
+      redirect: {
+        regexSubstitution: `chrome-extension://${extensionId}/viewer/viewer.html?file=\\0`
       }
-    ]
-  });
+    },
+    condition: {
+      regexFilter: "^(https?|file|ftp):\\/\\/.*\\.pdf(?:\\?.*)?(?:#.*)?$",
+      resourceTypes: ["main_frame", "sub_frame"]
+    }
+  };
+}
+
+// ─── Apply or remove the redirect rule ────────────────────────────────────────
+async function _applyRule(enabled) {
+  try {
+    if (enabled) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [RULE_ID],
+        addRules: [_buildRedirectRule()]
+      });
+    } else {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: [RULE_ID],
+        addRules: []
+      });
+    }
+    console.log('[Nivra SW] Redirect rule', enabled ? 'ENABLED' : 'DISABLED');
+    return true;
+  } catch (err) {
+    console.error('[Nivra SW] Failed to update redirect rule:', err);
+    return false;
+  }
+}
+
+// ─── Read storage and apply ───────────────────────────────────────────────────
+async function _syncRuleWithStorage() {
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  const enabled = result[STORAGE_KEY] !== undefined ? result[STORAGE_KEY] : true;
+  await _applyRule(enabled);
+}
+
+// ─── Event: Extension installed or updated ────────────────────────────────────
+chrome.runtime.onInstalled.addListener(async () => {
+  // Set default to enabled on first install
+  const result = await chrome.storage.local.get(STORAGE_KEY);
+  if (result[STORAGE_KEY] === undefined || result[STORAGE_KEY] === null) {
+    await chrome.storage.local.set({ [STORAGE_KEY]: true });
+  }
+  await _syncRuleWithStorage();
+});
+
+// ─── Event: Browser startup ──────────────────────────────────────────────────
+chrome.runtime.onStartup.addListener(async () => {
+  await _syncRuleWithStorage();
+});
+
+// ─── Event: Direct message from popup (most reliable MV3 pattern) ─────────────
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === 'SET_ENABLED') {
+    const enabled = !!message.enabled;
+
+    // Persist to storage AND apply the rule, then respond
+    Promise.all([
+      chrome.storage.local.set({ [STORAGE_KEY]: enabled }),
+      _applyRule(enabled)
+    ])
+    .then(() => sendResponse({ success: true, enabled }))
+    .catch(err => {
+      console.error('[Nivra SW] SET_ENABLED failed:', err);
+      sendResponse({ success: false, error: String(err) });
+    });
+
+    // Return true to indicate we will call sendResponse asynchronously
+    return true;
+  }
+
+  if (message?.type === 'GET_ENABLED') {
+    chrome.storage.local.get(STORAGE_KEY)
+      .then(result => {
+        const enabled = result[STORAGE_KEY] !== undefined ? result[STORAGE_KEY] : true;
+        sendResponse({ enabled });
+      })
+      .catch(() => sendResponse({ enabled: true }));
+
+    return true;
+  }
 });
