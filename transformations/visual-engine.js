@@ -6,10 +6,22 @@
  * ─── Modes ───────────────────────────────────────────────────────────────────
  *   smart-dark    → smart-dark/index.js — per-page, document-aware filter on
  *                   .canvasWrapper + photographic-image preservation overlay
- *   true-invert   → CSS filter on #viewer: invert(100%)
- *   grayscale     → CSS filter on #viewer: grayscale(100%)
- *   high-contrast → CSS filter on #viewer: contrast/brightness/saturate
+ *   true-invert   → page filter: invert(100%)
+ *   grayscale     → page filter: grayscale(100%)
+ *   high-contrast → page filter: contrast/brightness/saturate
  *   original      → no filter
+ *
+ * ─── How filters reach the page ──────────────────────────────────────────────
+ * Every mode publishes ONE CSS custom property, --nivra-filter, on
+ * #viewerWrapper. viewer/input.css applies it to each page's canvas layer:
+ *
+ *     .pdfViewer .page .canvasWrapper { filter: var(--nivra-filter, none) }
+ *
+ * So there is no per-page JS (pages PDF.js creates later are filtered from
+ * their first frame), a brightness/contrast change is a single property write,
+ * and no filter is ever placed on #viewer — that would force one compositing
+ * surface as tall as the whole document and would also invert the text layer,
+ * selection highlights and annotation widgets.
  *
  * ─── What this file does NOT do ──────────────────────────────────────────────
  *   ✗  getImageData / putImageData
@@ -33,6 +45,9 @@ const CSS_FILTER = {
 
 const MODE_CLASSES = ['mode-smart-dark'];
 
+/** Custom property read by `.canvasWrapper { filter: var(--nivra-filter) }` (input.css). */
+const FILTER_VAR = '--nivra-filter';
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let _mode       = 'smart-dark';
 let _brightness = 100;
@@ -41,6 +56,16 @@ let _contrast   = 100;
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function getCurrentMode() { return _mode; }
+export function getAdjustments() { return { brightness: _brightness, contrast: _contrast }; }
+/** CSS filter for the pure-filter modes ('' for smart-dark / original). */
+export function getModeFilter(mode) { return CSS_FILTER[mode] || ''; }
+
+/** Paint the filled part of a range track (consumed by glass.css via --p). */
+function _paintSlider(el) {
+  if (!el) return;
+  const span = (+el.max) - (+el.min) || 1;
+  el.style.setProperty('--p', (((+el.value) - (+el.min)) / span * 100) + '%');
+}
 
 /**
  * Initialize the visual engine.
@@ -72,10 +97,37 @@ export function setDocument(pdfDoc) {
  * @param {Element}      canvas     — the live PDF.js canvas (evt.source.canvas)
  */
 export function onPageRendered(pageNumber, viewport, pageEl, canvas) {
+  // Always forwarded, whatever the mode: Smart Dark does its per-page work only
+  // while active, but it must keep its record of each page's current viewport
+  // and canvas up to date even while another mode is selected — otherwise
+  // switching back to Smart Dark would pair a stale viewport with a new canvas.
+  // The other modes are CSS-filter only and need no per-page action.
+  SmartDark.onPageRendered(pageNumber, viewport, pageEl, canvas);
+}
+
+/**
+ * Called by viewer.js when PDF.js finishes a page's text layer. Forwarded in
+ * every mode (like onPageRendered) so Smart Dark's record stays current.
+ *
+ * @param {number}  pageNumber
+ * @param {Element} pageEl — .page div
+ */
+export function onTextLayerRendered(pageNumber, pageEl) {
+  SmartDark.onTextLayerRendered(pageNumber, pageEl);
+}
+
+/**
+ * Called by viewer.js when PDF.js finishes (re)painting a page's full-resolution
+ * detail canvas — shown over the visible part of a zoomed-in page.
+ *
+ * @param {number}  pageNumber
+ * @param {Element} pageEl        — .page div
+ * @param {Element} detailCanvas  — the live detail canvas
+ */
+export function onDetailRendered(pageNumber, pageEl, detailCanvas) {
   if (_mode === 'smart-dark') {
-    SmartDark.onPageRendered(pageNumber, viewport, pageEl, canvas);
+    SmartDark.onDetailRendered(pageNumber, pageEl, detailCanvas);
   }
-  // Other modes: CSS filter only — no per-page action needed
 }
 
 // ─── Internal ─────────────────────────────────────────────────────────────────
@@ -88,6 +140,9 @@ function _bindUIControls() {
   const cVal     = document.getElementById('contrast-val');
   const btnReset = document.getElementById('btn-reset-appearance');
 
+  _paintSlider(bSlider);
+  _paintSlider(cSlider);
+
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => _applyMode(btn.dataset.mode, modeBtns));
   });
@@ -95,12 +150,14 @@ function _bindUIControls() {
   bSlider?.addEventListener('input', e => {
     _brightness = +e.target.value;
     if (bVal) bVal.textContent = _brightness + '%';
+    _paintSlider(e.target);
     _applyAdjustments();
   });
 
   cSlider?.addEventListener('input', e => {
     _contrast = +e.target.value;
     if (cVal) cVal.textContent = _contrast + '%';
+    _paintSlider(e.target);
     _applyAdjustments();
   });
 
@@ -110,6 +167,8 @@ function _bindUIControls() {
     if (cSlider) cSlider.value = 100;
     if (bVal) bVal.textContent = '100%';
     if (cVal) cVal.textContent = '100%';
+    _paintSlider(bSlider);
+    _paintSlider(cSlider);
     _applyMode('smart-dark', modeBtns);
   });
 }
@@ -122,10 +181,9 @@ function _applyMode(mode, cards) {
   const prev = _mode;
   _mode = mode;
 
-  // 1. Clear all mode classes + any leftover PDF-layer filter
+  // 1. Clear all mode classes + the shared page-filter variable
   MODE_CLASSES.forEach(c => wrapper.classList.remove(c));
-  wrapper.style.filter = '';
-  viewer.style.filter = '';
+  wrapper.style.removeProperty(FILTER_VAR);
 
   // 2. Deactivate previous mode
   if (prev === 'smart-dark') {
@@ -139,14 +197,9 @@ function _applyMode(mode, cards) {
   } else if (mode === 'original') {
     // Nothing to apply — already cleared above
   } else {
-    // CSS filter modes on the PDF layer only, so the surrounding viewer shell
-    // stays visually stationary regardless of the selected appearance mode.
-    const parts = [
-      CSS_FILTER[mode]  || '',
-      _brightness !== 100 ? `brightness(${_brightness / 100})` : '',
-      _contrast   !== 100 ? `contrast(${_contrast   / 100})` : '',
-    ].filter(Boolean);
-    viewer.style.filter = parts.join(' ');
+    // Pure-filter modes: applied to each page's canvas layer by CSS, so the
+    // text layer, annotations and the Nivra UI are never transformed.
+    wrapper.style.setProperty(FILTER_VAR, _composeFilter(mode));
   }
 
   // 4. Update card UI
@@ -159,7 +212,13 @@ function _applyMode(mode, cards) {
   }
 }
 
+let _adjFrame = 0;
 function _applyAdjustments() {
+  if (_adjFrame) return;
+  _adjFrame = requestAnimationFrame(() => { _adjFrame = 0; _flushAdjustments(); });
+}
+
+function _flushAdjustments() {
   const wrapper = document.getElementById('viewerWrapper');
   const viewer = document.getElementById('viewer');
   if (!wrapper || !viewer) return;
@@ -167,11 +226,15 @@ function _applyAdjustments() {
   if (_mode === 'smart-dark') {
     SmartDark.updateAdjustments(wrapper, _brightness, _contrast);
   } else if (_mode !== 'original') {
-    const parts = [
-      CSS_FILTER[_mode] || '',
-      _brightness !== 100 ? `brightness(${_brightness / 100})` : '',
-      _contrast   !== 100 ? `contrast(${_contrast   / 100})` : '',
-    ].filter(Boolean);
-    viewer.style.filter = parts.join(' ');
+    wrapper.style.setProperty(FILTER_VAR, _composeFilter(_mode));
   }
+}
+
+/** Mode filter followed by the user's brightness / contrast. */
+function _composeFilter(mode) {
+  return [
+    CSS_FILTER[mode] || '',
+    _brightness !== 100 ? `brightness(${_brightness / 100})` : '',
+    _contrast   !== 100 ? `contrast(${_contrast   / 100})` : '',
+  ].filter(Boolean).join(' ');
 }

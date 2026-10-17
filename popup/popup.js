@@ -34,9 +34,18 @@ const VIEWER_PATH  = 'viewer/viewer.html';
 function _extractNivraPdfUrl(tabUrl) {
   if (!tabUrl || !tabUrl.includes(EXTENSION_ID)) return null;
   try {
+    // Same two forms as viewer.js: literal (redirect rule) or percent-encoded
+    // (this popup). URLSearchParams would cut a literal URL at its first "&".
     const parsed = new URL(tabUrl);
-    const fileParam = parsed.searchParams.get('file');
-    return fileParam || null;
+    const m = /[?&]file=/.exec(parsed.search);
+    if (!m) return null;
+    let url = parsed.search.slice(m.index + m[0].length);
+    if (/^[a-z][a-z0-9+.-]*%3A/i.test(url)) {
+      try { url = decodeURIComponent(url); } catch (_) { /* keep as-is */ }
+    } else {
+      url += parsed.hash;
+    }
+    return url || null;
   } catch (_) {
     return null;
   }
@@ -168,23 +177,16 @@ btnShortcuts.addEventListener('click', () => {
 
   const tip = document.createElement('div');
   tip.id = 'shortcuts-tip';
-  tip.style.cssText = `
-    padding: 12px 20px 14px;
-    font-size: 11px;
-    line-height: 1.7;
-    color: #B0B8C4;
-    border-top: 1px solid rgba(255,255,255,0.08);
-    animation: fadeIn 0.15s ease-out;
-  `;
+  tip.className = 'shortcuts-tip';
   tip.innerHTML = `
-    <div style="color:#FFFFFF;font-weight:600;font-size:11px;margin-bottom:6px;">Viewer Shortcuts</div>
-    <div><kbd style="color:#60A5FA">Ctrl+F</kbd> — Search in document</div>
-    <div><kbd style="color:#60A5FA">Ctrl+B</kbd> — Toggle sidebar</div>
-    <div><kbd style="color:#60A5FA">Ctrl+P</kbd> — Print</div>
-    <div><kbd style="color:#60A5FA">Ctrl+0</kbd> — Reset zoom</div>
-    <div><kbd style="color:#60A5FA">Ctrl++/−</kbd> — Zoom in / out</div>
-    <div><kbd style="color:#60A5FA">↑ / ↓</kbd> — Previous / next page</div>
-    <div><kbd style="color:#60A5FA">Esc</kbd> — Close panels</div>
+    <div class="shortcuts-tip-title">Viewer Shortcuts</div>
+    <div><kbd>Ctrl+F</kbd> Search in document</div>
+    <div><kbd>Ctrl+B</kbd> Toggle sidebar</div>
+    <div><kbd>Ctrl+P</kbd> Print</div>
+    <div><kbd>Ctrl+0</kbd> Reset zoom</div>
+    <div><kbd>Ctrl++/−</kbd> Zoom in / out</div>
+    <div><kbd>↑ / ↓</kbd> Previous / next page</div>
+    <div><kbd>Esc</kbd> Close panels</div>
   `;
 
   const footer = document.querySelector('.popup-footer');

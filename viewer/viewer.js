@@ -5,9 +5,14 @@
  *
  * ─── Rendering Quality ───────────────────────────────────────────────────────
  * PDF.js PDFViewer handles DPR-aware rendering internally via its outputScale
- * mechanism. The key options for maximum fidelity:
- *   maxCanvasPixels: -1   — removes the default 16 MP canvas size cap;
- *                           without this, HiDPI pages are silently downscaled.
+ * mechanism. A page canvas is capped at a multiple of the screen's pixel count
+ * (capCanvasAreaFactor, default 3×) so zoomed-in pages cannot allocate huge
+ * canvases. When the cap bites, PDF.js lowers the page canvas's resolution and
+ * paints a second, full-resolution "detail" canvas over just the visible area,
+ * so zoomed text and lines stay sharp. That only happens while maxCanvasPixels
+ * is > 0, so it is deliberately left at PDF.js's default (2^25) — setting it to
+ * -1 turns the detail canvas off and zoomed pages go soft.
+ *
  *   textLayerMode:   1    — always render text layer (selection/search/copy)
  *   annotationMode:  2    — render annotations including interactive forms
  *
@@ -28,8 +33,11 @@ import {
   setupVisualEngine,
   setDocument    as veSetDocument,
   onPageRendered as veOnPageRendered,
+  onDetailRendered as veOnDetailRendered,
+  onTextLayerRendered as veOnTextLayerRendered,
   getCurrentMode,
 } from '../transformations/visual-engine.js';
+import { exportTransformedPdf, renderPagesForOutput } from '../transformations/pdf-export.js';
 
 // ─── PDF.js worker ────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc = '../pdfjs/build/pdf.worker.mjs';
@@ -112,19 +120,62 @@ const _thumbnailRenderPromises = new Map();
 const THUMBNAIL_CSS_WIDTH = 148;
 const THUMBNAIL_MAX_DPR = 1.5;
 
+// ─── ?file= parsing ───────────────────────────────────────────────────────────
+/**
+ * Resolve the PDF URL from the viewer URL. Two forms exist:
+ *   literal — written by the DNR redirect rule (it cannot percent-encode):
+ *               viewer.html?file=https://h/a.pdf?X-Sig=1&Expires=2#page=3
+ *   encoded — written by the popup:
+ *               viewer.html?file=https%3A%2F%2Fh%2Fa.pdf%3FX-Sig%3D1%26Expires%3D2
+ * The literal form must not go through URLSearchParams: it would end the value
+ * at the first "&" and drop the rest of the signed query string. Everything
+ * after "file=" belongs to the PDF URL (so keep file= last), and the fragment
+ * (#page=3) is re-attached to it instead of staying on the viewer page.
+ *
+ * @returns {{url: string, fragment: string}} url has no #fragment
+ */
+function _resolveFileParam(search, hash) {
+  const m = /[?&]file=/.exec(search);
+  if (!m) return { url: '', fragment: '' };
+
+  let url = search.slice(m.index + m[0].length);
+  if (/^[a-z][a-z0-9+.-]*%3A/i.test(url)) {
+    try { url = decodeURIComponent(url); } catch (_) { /* keep as-is */ }
+  } else {
+    url += hash;                       // literal form: the browser split the fragment off
+  }
+
+  const h = url.indexOf('#');
+  return h < 0
+    ? { url, fragment: '' }
+    : { url: url.slice(0, h), fragment: url.slice(h + 1) };
+}
+
+/** Last path segment of a URL, without its query string or fragment. */
+function _fileNameFromUrl(url) {
+  let path = url;
+  try { path = new URL(url).pathname; } catch (_) { path = url.split(/[?#]/)[0]; }
+  let name = path.split('/').pop() || '';
+  try { name = decodeURIComponent(name); } catch (_) { /* keep raw */ }
+  return name;
+}
+
+let _initialPage = 0;
+
 // ─── Initialise ───────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Visual engine (sets up UI and applies default Smart Dark)
   setupVisualEngine();
 
   // 2. Resolve file URL
-  const params   = new URLSearchParams(window.location.search);
-  currentFileUrl = params.get('file') || '';
+  const { url, fragment } = _resolveFileParam(window.location.search, window.location.hash);
+  currentFileUrl = url;
+  _initialPage = parseInt(new URLSearchParams(fragment).get('page'), 10) || 0;
   if (!currentFileUrl) { _showError('No PDF file specified.'); return; }
 
   // 3. Set document title
   try {
-    const fname  = decodeURIComponent(currentFileUrl.split('/').pop() || 'Document');
+    const fname  = _fileNameFromUrl(currentFileUrl) || 'Document';
     const titleEl = document.getElementById('document-title');
     if (titleEl) { titleEl.textContent = fname; titleEl.title = fname; }
     document.title = fname + ' — Nivra';
@@ -167,11 +218,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     findController:    pdfFindController,
     removePageBorders: false,
     //
-    // ── Rendering quality options ──────────────────────────────────────────
-    // maxCanvasPixels: -1 removes the default 16 MP cap. Without this, PDF.js
-    // silently scales DOWN the canvas on HiDPI displays and at higher zoom
-    // levels, causing pixelated text and jagged table lines.
-    maxCanvasPixels: -1,
+    // ── Rendering quality ──────────────────────────────────────────────────
+    // maxCanvasPixels is intentionally NOT set (default 2^25). That keeps
+    // PDF.js's detail canvas enabled, which is what keeps zoomed-in pages
+    // sharp without giant canvases. Smart Dark's photo-preservation overlay
+    // follows it (see onDetailRendered in smart-dark/index.js).
     //
     // textLayerMode 1 = ENABLE — required for text selection, search, copy.
     textLayerMode: 1,
@@ -186,6 +237,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   eventBus.on('pagesinit', () => {
     pdfViewer.currentScaleValue = 'auto';
     _updateScaleUI('auto');
+    if (_initialPage) {
+      pdfViewer.currentPageNumber = Math.min(_initialPage, pdfViewer.pagesCount);
+      _initialPage = 0;
+    }
     _setTwoPageView(false, { preservePage: true });
     _refreshThumbnailObservation();
   });
@@ -218,9 +273,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const canvas    = pageView?.canvas
       ?? pageEl?.querySelector('.canvasWrapper canvas');
 
+    // PDF.js's full-resolution detail canvas (visible area only) fires its own
+    // pagerendered. It is not a page render: it must not reset the page's
+    // analysis, only refresh the sharp half of the photo overlay.
+    if (evt.isDetailView) {
+      if (pageEl && canvas) veOnDetailRendered(evt.pageNumber, pageEl, canvas);
+      return;
+    }
+
     if (viewport && pageEl && canvas) {
       veOnPageRendered(evt.pageNumber, viewport, pageEl, canvas);
     }
+  });
+
+  // The text layer renders AFTER the canvas (pagerendered). Smart Dark needs its
+  // text boxes to tell "photo with a caption on it" from "photo", so it is told
+  // the moment each text layer is ready instead of guessing with timers.
+  eventBus.on('textlayerrendered', evt => {
+    const pageEl = evt.source?.div ?? document.querySelector(
+      `.pdfViewer .page[data-page-number="${evt.pageNumber}"]`
+    );
+    if (pageEl) veOnTextLayerRendered(evt.pageNumber, pageEl);
   });
 
   eventBus.on('updatefindmatchescount', ({ matchesCount }) => {
@@ -239,6 +312,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       standardFontDataUrl: pdfjsUrl + 'web/standard_fonts/',
       cMapUrl:             pdfjsUrl + 'web/cmaps/',
       cMapPacked:          true,
+      // WASM image/colour decoders + CMYK ICC profile (copied by build.js).
+      // Without these, JPEG2000 / JBIG2 images render blank and ICC colours are off.
+      wasmUrl:             pdfjsUrl + 'web/wasm/',
+      iccUrl:              pdfjsUrl + 'web/iccs/',
     });
     pdfDoc = await task.promise;
 
@@ -352,7 +429,7 @@ function _setupUI() {
   });
 
   // ── Print ─────────────────────────────────────────────────────────────────
-  document.getElementById('btn-print')?.addEventListener('click', () => window.print());
+  document.getElementById('btn-print')?.addEventListener('click', () => _printDocument());
 
   // ── Search ────────────────────────────────────────────────────────────────
   const findInput = document.getElementById('find-input');
@@ -391,7 +468,7 @@ function _setupUI() {
       _updateScaleUI('auto');
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
       e.preventDefault();
-      window.print();
+      _printDocument();
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
       e.preventDefault();
       _setSidebarOpen(!_sidebarOpen);
@@ -686,7 +763,7 @@ async function _resolveFileSize(meta, downloadInfo) {
 function _resolveFileName(meta) {
   return _firstNonEmpty(
     meta?.contentDispositionFilename,
-    decodeURIComponent(currentFileUrl.split('/').pop() || ''),
+    _fileNameFromUrl(currentFileUrl),
     'Document.pdf',
   );
 }
@@ -807,95 +884,148 @@ function _getStandardPageName(widthMm, heightMm) {
 }
 
 // ─── Download Transformed ─────────────────────────────────────────────────────
+const MODE_LABELS = {
+  'smart-dark':    'Smart Dark',
+  'true-invert':   'True Invert',
+  'grayscale':     'Grayscale',
+  'high-contrast': 'High Contrast',
+  'original':      'Original',
+};
+let _exporting = false;
+
 async function _downloadTransformed() {
-  const pages = document.querySelectorAll('.pdfViewer .page');
-  if (!pages.length) {
-    alert('No pages available. Scroll through the document first to render pages.');
-    return;
+  if (!pdfDoc || _exporting) return;
+  _exporting = true;
+
+  const btn = document.getElementById('btn-download');
+  const idleTitle = btn?.title || '';
+  btn?.classList.add('is-busy');
+
+  try {
+    const blob = await exportTransformedPdf(pdfDoc, {
+      onProgress: (done, total) => { if (btn) btn.title = `Exporting page ${done} of ${total}…`; },
+    });
+
+    const base = (document.getElementById('document-title')?.textContent || 'document')
+      .replace(/\.pdf$/i, '')
+      .replace(/[\\/:*?"<>|]+/g, ' ')
+      .trim() || 'document';
+    const label = MODE_LABELS[getCurrentMode()] || 'Transformed';
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${base} - ${label} (Nivra).pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch (err) {
+    console.error('[Nivra] Export failed:', err);
+    alert('Could not export the PDF: ' + (err?.message || err));
+  } finally {
+    _exporting = false;
+    btn?.classList.remove('is-busy');
+    if (btn) btn.title = idleTitle;
   }
+}
 
-  const mode     = getCurrentMode();
-  const docTitle = document.getElementById('document-title')?.textContent || 'document';
+// ─── Print ────────────────────────────────────────────────────────────────────
+// window.print() on the live viewer would print the toolbar plus whichever
+// pages PDF.js currently has in the DOM. Instead every page is rendered
+// offscreen into a print-only container (#nivra-print); @media print in
+// input.css hides everything else. Pages are rendered in the CURRENT mode with
+// the current brightness/contrast, exactly as on screen (same filters, dark
+// pages skipped, photos restored), at ~150 dpi. Switch to Original first for an
+// ink-friendly printout.
+const PRINT_SCALE    = 2.083;   // 72 pt × 2.083 ≈ 150 dpi
+const PRINT_MAX_SIDE = 3000;    // px, longest side
+let _printing = false;
 
-  // CSS filter strings matching the visual engine's mode filters
-  const modeFilters = {
-    'true-invert':  'invert(100%)',
-    'grayscale':    'grayscale(100%)',
-    'high-contrast':'contrast(180%) brightness(0.9) saturate(1.2)',
+async function _printDocument() {
+  if (!pdfDoc || _printing) return;
+  _printing = true;
+
+  const toast = _showToast('Preparing pages for print…');
+  const urls = [];
+  let container = null, style = null;
+  const cleanup = () => {
+    container?.remove(); style?.remove();
+    urls.splice(0).forEach(u => URL.revokeObjectURL(u));
+    container = style = null;
+    toast.hide();
+    _printing = false;
   };
 
-  const pageImages = [];
-  for (const page of pages) {
-    const canvas = page.querySelector('canvas');
-    if (!canvas || !canvas.width || !canvas.height) continue;
+  try {
+    // mode / brightness / contrast default to the live viewer state.
+    const pages = await renderPagesForOutput(pdfDoc, {
+      maxScale: PRINT_SCALE,
+      maxSidePx: PRINT_MAX_SIDE,
+      onProgress: (done, total) => toast.update(`Preparing page ${done} of ${total}…`),
+    });
 
-    const offscreen = document.createElement('canvas');
-    offscreen.width  = canvas.width;
-    offscreen.height = canvas.height;
-    const ctx = offscreen.getContext('2d');
-
-    if (mode === 'smart-dark' || mode === 'original') {
-      // Smart Dark: apply the same filter chain the engine applies to the
-      // page's canvas layer, then composite the image-preservation overlay
-      // (raw original pixels) on top — matching the on-screen result.
-      if (mode === 'smart-dark') {
-        ctx.filter = 'invert(100%) hue-rotate(180deg)';
+    // One named @page per distinct page size, so mixed portrait / landscape /
+    // custom-size documents each print on a correctly sized sheet.
+    container = document.createElement('div');
+    container.id = 'nivra-print';
+    const names = new Map();
+    let rules = '@page { margin: 0; }\n';
+    const imgs = pages.map(({ blob, pt }) => {
+      const key = `${Math.round(pt[0] * 100)}x${Math.round(pt[1] * 100)}`;
+      let name = names.get(key);
+      if (!name) {
+        name = `nivra-p${names.size}`;
+        names.set(key, name);
+        rules += `@page ${name} { size: ${pt[0].toFixed(2)}pt ${pt[1].toFixed(2)}pt; margin: 0; }\n` +
+                 `.${name} { page: ${name}; }\n`;
       }
-      ctx.drawImage(canvas, 0, 0);
-      if (mode === 'smart-dark') {
-        ctx.filter = 'none';
-        const overlay = page.querySelector('canvas.nivra-image-overlay');
-        if (overlay?.width) ctx.drawImage(overlay, 0, 0);
-      }
-    } else {
-      const f = modeFilters[mode];
-      if (f) ctx.filter = f;
-      ctx.drawImage(canvas, 0, 0);
-    }
+      const url = URL.createObjectURL(blob);
+      urls.push(url);
 
-    pageImages.push(offscreen.toDataURL('image/jpeg', 0.93));
+      const wrap = document.createElement('div');
+      wrap.className = `nivra-print-page ${name}`;
+      wrap.style.width  = `${pt[0].toFixed(2)}pt`;
+      wrap.style.height = `${pt[1].toFixed(2)}pt`;
+      const img = new Image();
+      img.alt = '';
+      img.src = url;
+      wrap.appendChild(img);
+      container.appendChild(wrap);
+      return img;
+    });
+
+    style = document.createElement('style');
+    style.textContent = rules;
+    document.head.appendChild(style);
+    document.body.appendChild(container);
+
+    // The print preview must not be taken before every bitmap is decoded.
+    await Promise.all(imgs.map(img => img.decode().catch(() => {})));
+    toast.hide();
+
+    window.addEventListener('afterprint', cleanup, { once: true });
+    window.print();            // blocks until the dialog closes in Chromium
+    cleanup();                 // idempotent; afterprint may already have run
+  } catch (err) {
+    console.error('[Nivra] Print failed:', err);
+    cleanup();
+    alert('Could not prepare the document for printing: ' + (err?.message || err));
   }
+}
 
-  if (!pageImages.length) {
-    alert('No rendered pages captured.');
-    return;
-  }
-
-  const modeLabel = {
-    'smart-dark':   'Smart Dark',
-    'true-invert':  'True Invert',
-    'grayscale':    'Grayscale',
-    'high-contrast':'High Contrast',
-    'original':     'Original',
-  }[mode] || mode;
-
-  const pw = window.open('', '_blank', 'width=900,height=700');
-  if (!pw) {
-    alert('Please allow pop-ups for this extension to download the transformed PDF.');
-    return;
-  }
-
-  pw.document.write(`<!DOCTYPE html>
-<html><head>
-  <title>${docTitle} — ${modeLabel} (Nivra)</title>
-  <style>
-    @page { margin:0; size:auto; }
-    *     { margin:0; padding:0; box-sizing:border-box; }
-    body  { background:#fff; }
-    .p    { width:100%; page-break-after:always; display:block; }
-    img   { width:100%; display:block; }
-    .bar  { position:fixed; bottom:0; left:0; right:0;
-            background:#1e1e1e; color:#aaa; font:12px sans-serif;
-            padding:8px 16px; text-align:center; }
-    @media print { .bar { display:none; } }
-  </style>
-</head><body>
-${pageImages.map((s, i) =>
-  `<div class="p"><img src="${s}" alt="Page ${i+1}"></div>`).join('\n')}
-<div class="bar">Nivra — <strong>${modeLabel}</strong> &nbsp;|&nbsp; Press <kbd>Ctrl+P</kbd> to save as PDF</div>
-</body></html>`);
-  pw.document.close();
-  setTimeout(() => { try { pw.print(); } catch(_){} }, 600);
+/** Small transient status pill (styled in glass.css). */
+function _showToast(text) {
+  const el = document.createElement('div');
+  el.className = 'nivra-toast';
+  el.setAttribute('role', 'status');
+  el.textContent = text;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('is-visible'));
+  return {
+    update: t => { el.textContent = t; },
+    hide: () => { el.classList.remove('is-visible'); setTimeout(() => el.remove(), 400); },
+  };
 }
 
 // ─── Scale UI helper ──────────────────────────────────────────────────────────

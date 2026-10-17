@@ -27,6 +27,9 @@
 /** Page background luminance below this → already dark, skip inversion. */
 const DARK_BG_LUMINANCE = 0.35;
 
+/** A painted fill covering ≥ this fraction of the page counts as the page background. */
+const BG_FILL_FRACTION = 0.8;
+
 /** Image covering ≥ this fraction of the page area → scanned-page candidate. */
 const SCANNED_AREA_FRACTION = 0.85;
 
@@ -132,18 +135,19 @@ export function regionStats(probe) {
  */
 export function classifyPage({ pageStats, textOps, imageCoverage, bgFills, pageSize }) {
   // 1. Painted dark background wins (operator evidence beats pixels):
-  //    a large fill whose color is dark → the document is already dark.
+  //    the TOPMOST near-full-page fill decides — a black backdrop that is later
+  //    covered by a white page fill must not make the page "dark". A topmost
+  //    fill of unknown colour (pattern) defers to the pixel evidence below.
   if (bgFills?.length && pageSize) {
     const pageArea = pageSize.w * pageSize.h;
-    for (const { rect, color } of bgFills) {
-      const area = rect[2] * rect[3];
-      if (area / pageArea >= BG_FILL_FRACTION && color) {
-        const lum = color.length === 1
-          ? color[0]
-          : 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
-        if (lum < DARK_BG_LUMINANCE) return 'dark-bg';
-      }
+    let paintedLum = null;
+    for (const { rect, color } of bgFills) {            // paint order: later = on top
+      if ((rect[2] * rect[3]) / pageArea < BG_FILL_FRACTION) continue;
+      paintedLum = color
+        ? 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]
+        : null;
     }
+    if (paintedLum !== null && paintedLum < DARK_BG_LUMINANCE) return 'dark-bg';
   }
 
   // 2. Full-page scan: one image covers almost everything and text is sparse.

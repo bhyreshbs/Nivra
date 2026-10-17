@@ -12,14 +12,7 @@
     /* Inline critical overrides that depend on runtime values */
     body { background:#606066; color:#E6EDF3; }
     
-    /* Appearance panel mode cards — active state */
-    .mode-card.active {
-        border-color: #3B82F6 !important;
-        background: rgba(59,130,246,0.12) !important;
-        box-shadow: 0 0 0 1px rgba(59,130,246,0.3), inset 0 0 20px rgba(59,130,246,0.05);
-    }
-    .mode-card.active .mode-icon { color: #3B82F6; }
-    .mode-card.active .mode-name { color: #60A5FA; }
+    /* Mode-card active state, previews and all glass styling live in glass.css */
 
     /* Mode preview strips */
     .preview-smart { background: linear-gradient(to right, #141414 40%, #E5E7EB 40%); }
@@ -231,6 +224,8 @@
         }
     }
     </style>
+    <!-- Monochrome glass theme: must stay AFTER the inline <style> above -->
+    <link rel="stylesheet" href="glass.css">
 </head>
 
 <body class="h-screen w-screen flex flex-col antialiased overflow-hidden" id="app-body">
@@ -241,15 +236,10 @@
          ================================================ -->
     <main id="viewerWrapper" class="sidebar-open">
         <button id="sidebar-toggle" type="button" aria-label="Toggle thumbnails sidebar" aria-expanded="true" title="Toggle thumbnails">
-            <svg class="sidebar-toggle-icon sidebar-toggle-icon-collapse" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="4" y="4" width="16" height="16" rx="4"></rect>
-                <line x1="9" y1="7.5" x2="9" y2="16.5"></line>
-                <polyline points="14 9 11 12 14 15"></polyline>
-            </svg>
-            <svg class="sidebar-toggle-icon sidebar-toggle-icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="4" y="4" width="16" height="16" rx="4"></rect>
-                <line x1="15" y1="7.5" x2="15" y2="16.5"></line>
-                <polyline points="10 9 13 12 10 15"></polyline>
+            <svg class="sb-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3.5" y="4.5" width="17" height="15" rx="4"></rect>
+                <rect class="sb-pane" x="3.5" y="4.5" width="7" height="15" rx="3.2" fill="currentColor" stroke="none"></rect>
+                <path class="sb-chevron" d="M15.4 9.4 12.6 12l2.8 2.6"></path>
             </svg>
         </button>
 
@@ -290,9 +280,6 @@
          ================================================ -->
     <div id="side-toolbar-shell" aria-label="Document actions">
         <div id="side-toolbar">
-            <button id="btn-print" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Print (Ctrl+P)" aria-label="Print">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8V3h10v5"/><rect x="5" y="14" width="14" height="7"/><path d="M5 10H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h1"/><path d="M19 10h1a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1"/><path d="M17 13H7"/></svg>
-            </button>
             <button id="btn-download" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Download transformed PDF" aria-label="Download transformed PDF">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
             </button>
@@ -450,7 +437,7 @@
         <!-- Appearance button -->
         <div class="relative">
             <button id="btn-appearance" class="flex items-center gap-2 px-3 h-8 rounded-xl border border-ui-border bg-ui-borderLight text-ui-text hover:bg-ui-surfaceHover transition-colors font-medium text-sm">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/></svg>
+                <svg class="appearance-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor" stroke="none"/></svg>
                 <span>Appearance</span>
             </button>
 
@@ -488,8 +475,6 @@
                                 <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(59,130,246,0.12);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                                 </div>
-                                <!-- Mini preview -->
-                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-smart"></div>
                             </div>
                             <div class="mode-name text-sm font-semibold text-ui-text">Smart Dark</div>
                             <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Dark bg, bright text</div>
@@ -501,7 +486,6 @@
                                 <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 </div>
-                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-original"></div>
                             </div>
                             <div class="mode-name text-sm font-semibold text-ui-text">Original</div>
                             <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Default rendering</div>
@@ -513,7 +497,6 @@
                                 <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(239,68,68,0.1);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg>
                                 </div>
-                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-invert"></div>
                             </div>
                             <div class="mode-name text-sm font-semibold text-ui-text">True Invert</div>
                             <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Full color flip</div>
@@ -525,7 +508,6 @@
                                 <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>
                                 </div>
-                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-gray"></div>
                             </div>
                             <div class="mode-name text-sm font-semibold text-ui-text">Grayscale</div>
                             <div class="text-[10px] text-ui-textMuted leading-tight mt-0.5">Remove all color</div>
@@ -537,7 +519,6 @@
                                 <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background: rgba(255,255,255,0.06);">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M12 2v20"/></svg>
                                 </div>
-                                <div class="flex-1 h-4 rounded-md overflow-hidden preview-contrast"></div>
                                 <div class="text-left">
                                     <div class="mode-name text-sm font-semibold text-ui-text">High Contrast</div>
                                     <div class="text-[10px] text-ui-textMuted">Maximum legibility</div>

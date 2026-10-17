@@ -50,4 +50,23 @@ if (fs.existsSync(cmapsSrc)) {
   fs.cpSync(cmapsSrc, cmapsDest, { recursive: true });
 }
 
+// Copy the WASM decoders (JPEG2000, JBIG2, qcms colour management) and the CMYK
+// ICC profile. viewer.js points PDF.js at them via wasmUrl / iccUrl; without
+// these folders JPX/JBIG2 images render blank and ICC colours are wrong.
+// quickjs-eval is PDF scripting support, which the viewer does not enable.
+const wasmSrc  = path.join(__dirname, 'node_modules', 'pdfjs-dist', 'wasm');
+const wasmDest = path.join(__dirname, 'pdfjs', 'web', 'wasm');
+if (fs.existsSync(wasmSrc)) {
+  fs.cpSync(wasmSrc, wasmDest, {
+    recursive: true,
+    filter: src => !path.basename(src).startsWith('quickjs-eval'),
+  });
+}
+
+const iccsSrc  = path.join(__dirname, 'node_modules', 'pdfjs-dist', 'iccs');
+const iccsDest = path.join(__dirname, 'pdfjs', 'web', 'iccs');
+if (fs.existsSync(iccsSrc)) {
+  fs.cpSync(iccsSrc, iccsDest, { recursive: true });
+}
+
 console.log('Build dependencies copied successfully.');

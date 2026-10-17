@@ -389,7 +389,60 @@
     background: rgba(59,130,246,0.4);
   }
 
-  /* Brightness / Contrast adjustments layer (composited via JS on #viewer). */
+  /*
+   * Page filter pipeline. Every mode (Smart Dark, True Invert, Grayscale, High
+   * Contrast, + brightness/contrast) sets ONE custom property on #viewerWrapper
+   * (visual-engine.js / smart-dark). It is applied to each page's canvas layer
+   * only — never to #viewer — so text selection, annotations and the UI are not
+   * transformed, and pages PDF.js creates later are filtered from their first frame.
+   */
+  .pdfViewer .page .canvasWrapper {
+    filter: var(--nivra-filter, none);
+  }
+  /* Pages that are already dark opt out (set by smart-dark/index.js). */
+  .pdfViewer .page.nivra-smart-dark-skip .canvasWrapper {
+    filter: none;
+  }
+
+  /*
+   * Printing. viewer.js renders EVERY page into #nivra-print (PDF.js keeps only
+   * the visible pages in the DOM) and then calls window.print(). On screen the
+   * container does not exist visually; in print it is the only thing shown, so
+   * the toolbar, sidebar and floating panels never reach the paper.
+   * Each .nivra-print-page is sized in pt by viewer.js and assigned a named
+   * @page of the same size, so mixed page sizes print on matching sheets.
+   */
+  #nivra-print {
+    display: none;
+  }
+  @media print {
+    html, body {
+      display: block !important;
+      width: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+      background: #fff !important;
+    }
+    body > :not(#nivra-print) {
+      display: none !important;
+    }
+    #nivra-print {
+      display: block;
+    }
+    .nivra-print-page {
+      overflow: hidden;
+      break-after: page;
+      break-inside: avoid;
+    }
+    .nivra-print-page:last-child {
+      break-after: auto;
+    }
+    .nivra-print-page img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  }
 
   @media (max-width: 900px) {
     #viewerWrapper {

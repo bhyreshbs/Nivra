@@ -1,0 +1,585 @@
+/* =============================================================================
+   Nivra — Monochrome Glass UI
+   -----------------------------------------------------------------------------
+   Loaded AFTER viewer.css and the inline <style> in viewer.html, so it wins on
+   equal specificity. Pure CSS: no JS, no libraries, no extra build step.
+
+   Layers of the look
+     1. Tokens         — black/white palette; re-points the Tailwind --color-*
+                         tokens so every existing utility class turns monochrome
+     2. Ambient scene  — slow-drifting white light behind the PDF (transform only)
+     3. Glass surfaces — gradient fill + backdrop blur + inner highlight + glow
+     4. Glow edges     — 1px masked conic-gradient ring on floating panels
+     5. Micro-motion   — hover lift, press squash, springy toggles, staggered pops
+
+   Performance notes
+     - backdrop-filter is limited to small floating panels (toolbars/popovers).
+     - Continuous animation: one transform-only drift layer. The rotating glow
+       ring only runs while a panel is hovered or open.
+     - prefers-reduced-motion disables all of it.
+   ========================================================================== */
+
+/* ── 1. Tokens ─────────────────────────────────────────────────────────────── */
+@property --nv-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  --nv-ease:   cubic-bezier(0.22, 1, 0.36, 1);
+  --nv-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --nv-fg:       #f5f5f5;
+  --nv-fg-dim:   rgba(255, 255, 255, 0.60);
+  --nv-fg-faint: rgba(255, 255, 255, 0.36);
+
+  --nv-fill:       linear-gradient(145deg, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.035) 48%, rgba(255,255,255,0.07) 100%);
+  --nv-fill-solid: rgba(12, 12, 14, 0.58);
+  --nv-blur:       blur(18px) saturate(0.35);
+
+  --nv-edge:     rgba(255, 255, 255, 0.14);
+  --nv-edge-hot: rgba(255, 255, 255, 0.45);
+  --nv-hl:       inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.03);
+  --nv-glow:     0 0 22px rgba(255,255,255,0.06);
+  --nv-drop:     0 18px 48px rgba(0,0,0,0.55);
+
+  /* Re-point the Tailwind theme tokens used throughout viewer.html */
+  --color-nivra-accent:       #ffffff;
+  --color-nivra-accentHover:  #e6e6e6;
+  --color-nivra-glow:         rgba(255, 255, 255, 0.25);
+  --color-ui-bg:              #050505;
+  --color-ui-surface:         #0e0e10;
+  --color-ui-surfaceHover:    rgba(255, 255, 255, 0.08);
+  --color-ui-border:          rgba(255, 255, 255, 0.14);
+  --color-ui-borderLight:     rgba(255, 255, 255, 0.06);
+  --color-ui-text:            #f5f5f5;
+  --color-ui-textMuted:       rgba(255, 255, 255, 0.58);
+  --color-ui-textSubtle:      rgba(255, 255, 255, 0.36);
+}
+
+html, body {
+  background: #050505 !important;
+  color: var(--nv-fg) !important;
+}
+
+::selection { background: rgba(255, 255, 255, 0.28); color: #fff; }
+#viewerWrapper.mode-smart-dark .textLayer ::selection { background: rgba(255, 255, 255, 0.30); }
+
+/* Thin, quiet scrollbars */
+::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.16); }
+::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.32); }
+
+/* Keyboard focus: soft white halo instead of the browser ring */
+button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.55), 0 0 18px rgba(255,255,255,0.22) !important;
+}
+
+/* ── 2. Ambient scene ──────────────────────────────────────────────────────── */
+#viewerWrapper,
+#viewerWrapper.mode-smart-dark {
+  background:
+    radial-gradient(120% 90% at 50% 0%, #121214 0%, #050505 55%, #000 100%);
+  isolation: isolate;
+}
+
+#viewerWrapper::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 34% at 22% 24%, rgba(255,255,255,0.11), transparent 70%),
+    radial-gradient(34% 30% at 80% 72%, rgba(255,255,255,0.075), transparent 70%),
+    radial-gradient(26% 24% at 62% 12%, rgba(255,255,255,0.05), transparent 70%);
+  animation: nv-drift 32s ease-in-out infinite alternate;
+  will-change: transform;
+}
+#viewerStage { z-index: 1; }
+
+@keyframes nv-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(5%, -4%, 0) scale(1.1); }
+}
+
+/* PDF pages: hairline halo + deep shadow */
+#viewerWrapper .pdfViewer .page {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.10),
+    0 0 44px rgba(255,255,255,0.045),
+    0 28px 64px rgba(0,0,0,0.65) !important;
+  border-radius: 4px;
+  transition: box-shadow 0.4s var(--nv-ease);
+}
+#viewerWrapper .pdfViewer .page:hover {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.20),
+    0 0 56px rgba(255,255,255,0.08),
+    0 28px 64px rgba(0,0,0,0.65) !important;
+}
+/* Pages fade in as they are painted */
+.pdfViewer .page .canvasWrapper { animation: nv-fade 0.4s ease-out backwards; }
+
+/* ── 3. Glass surfaces ─────────────────────────────────────────────────────── */
+#bottom-toolbar,
+#side-toolbar,
+#view-size-popover,
+#search-overlay,
+#appearance-popover,
+#properties-dialog,
+#thumbnail-sidebar-inner,
+#sidebar-toggle {
+  background: var(--nv-fill), var(--nv-fill-solid) !important;
+  -webkit-backdrop-filter: var(--nv-blur);
+          backdrop-filter: var(--nv-blur);
+  border: 1px solid var(--nv-edge) !important;
+  box-shadow: var(--nv-hl), var(--nv-glow), var(--nv-drop) !important;
+  color: var(--nv-fg);
+}
+
+#thumbnail-sidebar-inner {
+  border-width: 0 1px 0 0 !important;
+  box-shadow: var(--nv-hl), 14px 0 40px rgba(0,0,0,0.35) !important;
+}
+#viewerWrapper.sidebar-open #thumbnail-sidebar { border-right: 0; box-shadow: none; }
+#thumbnail-sidebar-header,
+#sidebar-controls { background: transparent; border-color: rgba(255,255,255,0.08); }
+#sidebar-controls { border-top: 1px solid rgba(255,255,255,0.08); }
+
+/* Fallback when backdrop-filter is unavailable: make the fill more opaque */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #bottom-toolbar, #side-toolbar, #view-size-popover, #search-overlay,
+  #appearance-popover, #properties-dialog, #thumbnail-sidebar-inner, #sidebar-toggle {
+    background: var(--nv-fill), rgba(14,14,16,0.94) !important;
+  }
+}
+
+/* The bottom toolbar CONTAINS the size/appearance popovers. A parent with
+   backdrop-filter becomes a "backdrop root" and would stop those popovers from
+   blurring the PDF behind them, so the toolbar's own glass lives on a sibling
+   pseudo-layer instead. */
+#bottom-toolbar {
+  background: none !important;
+  -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+  isolation: isolate;
+}
+#bottom-toolbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--nv-fill), var(--nv-fill-solid);
+  -webkit-backdrop-filter: var(--nv-blur);
+          backdrop-filter: var(--nv-blur);
+  box-shadow: var(--nv-hl);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  #bottom-toolbar::after { background: var(--nv-fill), rgba(14,14,16,0.94); }
+}
+
+/* Modal scrim */
+#properties-modal {
+  background: rgba(0,0,0,0.55);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+}
+#properties-modal:not([hidden]) { animation: nv-fade 0.3s ease-out; }
+#properties-modal:not([hidden]) #properties-dialog { animation: nv-pop 0.5s var(--nv-ease); }
+
+/* ── 4. Glow edges (1px masked conic ring) ─────────────────────────────────── */
+#side-toolbar { position: relative; }
+
+#bottom-toolbar::before,
+#side-toolbar::before,
+#appearance-popover::before,
+#search-overlay::before,
+#view-size-popover::before,
+#sidebar-toggle::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--nv-angle),
+    rgba(255,255,255,0.55),
+    rgba(255,255,255,0.04) 28%,
+    rgba(255,255,255,0.32) 52%,
+    rgba(255,255,255,0.04) 76%,
+    rgba(255,255,255,0.55)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+  opacity: 0.5;
+  transition: opacity 0.45s var(--nv-ease);
+}
+#sidebar-toggle { position: absolute; } /* keep original positioning, enable ::before */
+
+#bottom-toolbar:hover::before,
+#side-toolbar:hover::before,
+#sidebar-toggle:hover::before,
+.popover.active::before {
+  opacity: 1;
+  animation: nv-spin 7s linear infinite;
+}
+@keyframes nv-spin { to { --nv-angle: 360deg; } }
+
+/* ── 5. Micro-interactions ─────────────────────────────────────────────────── */
+
+/* 5a. Entrances */
+#bottom-toolbar   { animation: nv-rise 0.8s var(--nv-ease) 0.10s backwards; }
+#side-toolbar     { animation: nv-slide-in 0.8s var(--nv-ease) 0.22s backwards; }
+#sidebar-toggle   { animation: nv-fade 0.6s ease-out 0.30s backwards; }
+
+@keyframes nv-fade { from { opacity: 0; } }
+@keyframes nv-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+}
+@keyframes nv-slide-in {
+  from { opacity: 0; transform: translateX(18px) scale(0.96); }
+}
+@keyframes nv-pop {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+}
+
+/* 5b. Popovers: softer, longer, spring-ish open; correct transform origins */
+.popover {
+  transition:
+    opacity 0.28s var(--nv-ease),
+    visibility 0.28s,
+    transform 0.45s var(--nv-ease);
+}
+#appearance-popover { transform-origin: bottom right; }
+#view-size-popover  { transform-origin: bottom center; }
+#search-overlay     { transform-origin: right center; }
+
+#appearance-popover.active #mode-grid .mode-card { animation: nv-pop 0.55s var(--nv-ease) backwards; }
+#mode-grid .mode-card:nth-child(1) { animation-delay: 0.04s !important; }
+#mode-grid .mode-card:nth-child(2) { animation-delay: 0.08s !important; }
+#mode-grid .mode-card:nth-child(3) { animation-delay: 0.12s !important; }
+#mode-grid .mode-card:nth-child(4) { animation-delay: 0.16s !important; }
+#mode-grid .mode-card:nth-child(5) { animation-delay: 0.20s !important; }
+
+/* 5c. Buttons: lift on hover, squash on press, icon wiggle */
+.toolbar-btn, .icon-action, #btn-view-size, #btn-appearance, #btn-two-page-view,
+.view-size-option, #btn-close-properties, #btn-reset-appearance, .thumbnail-button,
+.mode-card, #sidebar-toggle {
+  transition:
+    transform 0.3s var(--nv-ease),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.35s var(--nv-ease),
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.toolbar-btn, .icon-action, #btn-view-size, #btn-appearance, #btn-two-page-view,
+#btn-close-properties {
+  position: relative;
+  background-color: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.09);
+  color: var(--nv-fg-dim);
+}
+.icon-action { border-color: transparent; background-color: transparent; }
+
+.toolbar-btn:hover, .icon-action:hover, #btn-view-size:hover, #btn-appearance:hover,
+#btn-two-page-view:hover, #btn-close-properties:hover {
+  background: rgba(255,255,255,0.11) !important;
+  border-color: rgba(255,255,255,0.32) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 6px 20px rgba(0,0,0,0.35), 0 0 18px rgba(255,255,255,0.14);
+}
+.toolbar-btn:active, .icon-action:active, #btn-view-size:active, #btn-appearance:active,
+#btn-two-page-view:active, #btn-close-properties:active, #sidebar-toggle:active,
+.mode-card:active, .thumbnail-button:active {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+
+#sidebar-toggle {
+  color: var(--nv-fg);
+  border-radius: 12px;
+}
+#sidebar-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--nv-hl), 0 0 22px rgba(255,255,255,0.16), var(--nv-drop) !important;
+}
+
+.toolbar-btn svg, .icon-action svg, #btn-appearance svg, #btn-view-size svg {
+  transition: transform 0.4s var(--nv-spring);
+}
+.toolbar-btn:hover svg,
+.icon-action:hover svg                { transform: scale(1.14); }
+#btn-download:hover svg               { transform: translateY(2px) scale(1.1); }
+#btn-search:hover svg                 { transform: scale(1.12) rotate(-10deg); }
+#btn-zoom-in:hover svg                { transform: rotate(90deg) scale(1.1); }
+#btn-zoom-out:hover svg               { transform: scaleX(1.25); }
+#btn-page-prev:hover svg              { transform: translateY(-2px); }
+#btn-page-next:hover svg              { transform: translateY(2px); }
+#btn-view-size:hover svg              { transform: translateY(1px); }
+#btn-close-search:hover svg,
+#btn-close-appearance:hover svg       { transform: rotate(90deg) scale(1.1); }
+
+#btn-reset-appearance { color: var(--nv-fg-faint); }
+#btn-reset-appearance:hover { color: #fff; transform: translateX(-2px); }
+
+/* 5d. Size menu */
+.view-size-option { color: var(--nv-fg-dim); position: relative; }
+.view-size-option:hover { background: rgba(255,255,255,0.09); color: #fff; padding-left: 14px; }
+.view-size-option.is-active { background: rgba(255,255,255,0.14); color: #fff; }
+.view-size-option.is-active::after {
+  content: ""; position: absolute; right: 12px; top: 50%;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 8px #fff;
+  transform: translateY(-50%);
+}
+.view-size-option { transition: background-color 0.2s ease, color 0.2s ease, padding 0.3s var(--nv-ease); }
+
+/* 5e. Page number field */
+#page-number-input {
+  border-bottom: 1px solid rgba(255,255,255,0.25);
+  transition: border-color 0.25s ease, box-shadow 0.35s var(--nv-ease);
+}
+#page-number-input:focus {
+  border-color: #fff;
+  box-shadow: 0 6px 12px -6px rgba(255,255,255,0.7) !important;
+}
+
+/* 5f. Search */
+#find-input::placeholder { color: var(--nv-fg-faint); }
+
+/* 5g. Appearance panel */
+#appearance-popover > div { border-color: rgba(255,255,255,0.08) !important; }
+#appearance-popover [style*="rgba(13,17,23"] { background: rgba(0,0,0,0.25) !important; }
+#appearance-popover > div:first-child [style*="rgba(59,130,246"] { background: rgba(255,255,255,0.08) !important; }
+
+.mode-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+}
+.mode-card::after {            /* light sweep on hover */
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.16) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 0.8s var(--nv-ease);
+  pointer-events: none;
+}
+.mode-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.32) !important;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45), 0 0 22px rgba(255,255,255,0.07);
+}
+.mode-card:hover::after { transform: translateX(130%); }
+
+.mode-card.active {
+  background: linear-gradient(145deg, rgba(255,255,255,0.17), rgba(255,255,255,0.04)) !important;
+  border-color: rgba(255,255,255,0.78) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.22),
+    0 0 28px rgba(255,255,255,0.15),
+    inset 0 0 24px rgba(255,255,255,0.05) !important;
+}
+.mode-card .mode-icon { background: rgba(255,255,255,0.07) !important; color: var(--nv-fg-dim); transition: background-color 0.3s ease, color 0.3s ease, transform 0.45s var(--nv-spring); }
+.mode-card:hover .mode-icon { transform: rotate(-8deg) scale(1.1); }
+.mode-card.active .mode-icon { background: rgba(255,255,255,0.16) !important; color: #fff; }
+.mode-card.active .mode-name { color: #fff; }
+
+/* Sliders */
+input[type=range] { cursor: pointer; touch-action: none; --p: 50%; }
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fff 0, #fff var(--p), rgba(255,255,255,0.14) var(--p));
+  box-shadow: 0 0 10px rgba(255,255,255,0.12);
+}
+input[type=range]::-webkit-slider-thumb {
+  background: #fff;
+  border: 0;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.12), 0 0 14px rgba(255,255,255,0.55);
+  margin-top: -5px;
+  transition: transform 0.2s var(--nv-ease), box-shadow 0.25s ease;
+}
+input[type=range]:hover::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 5px rgba(255,255,255,0.16), 0 0 20px rgba(255,255,255,0.75);
+}
+input[type=range]:active::-webkit-slider-thumb { transform: scale(0.9); }
+#brightness-val, #contrast-val { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.45); }
+
+/* 5h. Sidebar: thumbnails + two-page switch */
+.thumbnail-button {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+}
+.thumbnail-button:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.4), 0 0 18px rgba(255,255,255,0.07);
+}
+.thumbnail-button.is-active {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.7);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 0 24px rgba(255,255,255,0.14);
+}
+.thumbnail-button.is-active .thumbnail-page-label { color: #fff; }
+.thumbnail-canvas-wrap { background: rgba(0,0,0,0.35); }
+.thumbnail-canvas-wrap canvas {
+  animation: nv-pop 0.5s var(--nv-ease) backwards;
+  transition: transform 0.4s var(--nv-ease);
+}
+.thumbnail-button:hover .thumbnail-canvas-wrap canvas { transform: scale(1.025); }
+.thumbnail-page-label { color: var(--nv-fg-dim); transition: color 0.2s ease; }
+
+.thumbnail-placeholder {
+  position: relative; overflow: hidden;
+  width: 100%; min-height: 156px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--nv-fg-faint);
+}
+.thumbnail-placeholder::after {   /* loading shimmer */
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.09) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: nv-shimmer 1.6s ease-in-out infinite;
+}
+@keyframes nv-shimmer { to { transform: translateX(100%); } }
+
+#btn-two-page-view { border-radius: 12px; }
+.sidebar-toggle-switch {
+  background: rgba(255,255,255,0.14);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.sidebar-toggle-switch-knob {
+  background: #fff;
+  transition: transform 0.45s var(--nv-spring), background-color 0.3s ease;
+}
+#btn-two-page-view[aria-pressed="true"] { border-color: rgba(255,255,255,0.45); }
+#btn-two-page-view[aria-pressed="true"] .sidebar-toggle-switch {
+  background: linear-gradient(135deg, #ffffff, #b8b8b8);
+  box-shadow: 0 0 16px rgba(255,255,255,0.35);
+}
+#btn-two-page-view[aria-pressed="true"] .sidebar-toggle-switch-knob { background: #0a0a0a; }
+
+/* Sidebar toggle: the pane fills/empties and the chevron flips, in sync with
+   the sidebar sliding (same duration + easing for all three). */
+#thumbnail-sidebar { transition: width 0.45s var(--nv-ease); }
+#sidebar-toggle {
+  transition:
+    left 0.45s var(--nv-ease),
+    transform 0.3s var(--nv-ease),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.35s var(--nv-ease);
+}
+#thumbnail-sidebar-inner {
+  transition: opacity 0.35s ease, transform 0.45s var(--nv-ease);
+}
+#viewerWrapper:not(.sidebar-open) #thumbnail-sidebar-inner {
+  opacity: 0;
+  transform: translateX(-28px);
+}
+.sb-icon .sb-pane {
+  transform-box: fill-box;
+  transform-origin: left center;
+  opacity: 0.28;
+  transition: transform 0.45s var(--nv-ease), opacity 0.35s ease;
+}
+.sb-icon .sb-chevron {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.55s var(--nv-spring), translate 0.3s var(--nv-ease);
+}
+#sidebar-toggle[aria-expanded="false"] .sb-pane    { transform: scaleX(0.3); opacity: 0.12; }
+#sidebar-toggle[aria-expanded="false"] .sb-chevron { transform: rotate(180deg); }
+#sidebar-toggle:hover .sb-pane { opacity: 0.45; }
+#sidebar-toggle[aria-expanded="true"]:hover  .sb-chevron { translate: -1.5px 0; }
+#sidebar-toggle[aria-expanded="false"]:hover .sb-chevron { translate: 1.5px 0; }
+
+/* Appearance icon: half-filled circle turns over on hover */
+.appearance-icon { transition: transform 0.6s var(--nv-spring); }
+#btn-appearance:hover .appearance-icon { transform: rotate(180deg); }
+
+/* Download button while exporting */
+#btn-download.is-busy { pointer-events: none; color: #fff; }
+#btn-download.is-busy svg { animation: nv-bob 0.9s ease-in-out infinite; }
+@keyframes nv-bob { 50% { transform: translateY(4px); opacity: 0.45; } }
+
+/* 5i. Properties dialog */
+.properties-row {
+  border-bottom-color: rgba(255,255,255,0.07);
+  border-radius: 8px;
+  transition: background-color 0.2s ease, padding 0.3s var(--nv-ease);
+}
+.properties-row:hover { background: rgba(255,255,255,0.04); padding-left: 8px; padding-right: 8px; }
+.properties-label { color: var(--nv-fg-faint); }
+#properties-dialog::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+
+/* 5j. Error overlay */
+#error-log { background: radial-gradient(100% 80% at 50% 0%, #131315, #000) !important; }
+#error-log .text-red-400 { color: rgba(255,255,255,0.85); filter: drop-shadow(0 0 14px rgba(255,255,255,0.35)); }
+#error-log button {
+  background: rgba(255,255,255,0.07) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  transition: transform 0.3s var(--nv-ease), box-shadow 0.35s var(--nv-ease), background-color 0.25s ease;
+}
+#error-log button:hover {
+  background: rgba(255,255,255,0.14) !important;
+  box-shadow: 0 0 22px rgba(255,255,255,0.2);
+  transform: translateY(-1px);
+  opacity: 1;
+}
+#error-log button:active { transform: scale(0.96); }
+
+/* Transient status pill (print preparation) */
+.nivra-toast {
+  position: fixed;
+  left: 50%;
+  top: 22px;
+  z-index: 80;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--nv-fill), var(--nv-fill-solid);
+  -webkit-backdrop-filter: var(--nv-blur);
+          backdrop-filter: var(--nv-blur);
+  border: 1px solid var(--nv-edge);
+  box-shadow: var(--nv-hl), var(--nv-glow), var(--nv-drop);
+  opacity: 0;
+  transform: translate(-50%, -10px) scale(0.96);
+  transition: opacity 0.3s ease, transform 0.45s var(--nv-ease);
+  pointer-events: none;
+}
+.nivra-toast.is-visible { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+/* Small screens: keep blur cheap */
+@media (max-width: 900px) {
+  :root { --nv-blur: blur(12px) saturate(0.35); }
+}
+
+/* ── Reduced motion: keep the look, drop the movement ──────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
