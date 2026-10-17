@@ -1,6 +1,15 @@
+# dependencies and build output
 node_modules
 dist
 *.zip
-a.pdf
-shapes.pdf
+
+# test PDFs and exported copies
+*.pdf
 pdf output/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.claude/
