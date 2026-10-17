@@ -217,12 +217,21 @@ let _localFile = null;      // {name, blob} when opened from the popup's picker 
 let _siteHost = '';
 let _sitePinned = false;
 
-/** Hostname of an http(s) PDF address; '' for local files, blobs and picked files. */
+const LOCAL_FILES_KEY = 'local files';
+
+/**
+ * What a pinned look is keyed by: the hostname of an http(s) PDF, or one shared
+ * "local files" entry for file:// PDFs and files picked in the popup.
+ * '' (nothing to pin to) for anything else, such as blob: addresses.
+ */
 function _hostOf(url) {
+  if (_localFile) return LOCAL_FILES_KEY;
   try {
     const u = new URL(url);
-    return u.protocol === 'http:' || u.protocol === 'https:' ? u.hostname : '';
-  } catch (_) { return ''; }
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.hostname;
+    if (u.protocol === 'file:') return LOCAL_FILES_KEY;
+  } catch (_) { /* fall through */ }
+  return '';
 }
 
 /** "Remember for this site": pin the current look to the PDF's website. */
@@ -232,12 +241,16 @@ function _setupSitePref() {
   if (!box) return;
   if (!_siteHost) {
     box.disabled = true;
-    if (label) label.textContent = 'Remember for this site';
+    if (label) label.textContent = 'Not available for this PDF';
     return;
   }
   box.disabled = false;
   box.checked = _sitePinned;
-  if (label) label.textContent = `Remember for ${_siteHost}`;
+  if (label) {
+    label.textContent = _siteHost === LOCAL_FILES_KEY
+      ? 'Remember for local files'
+      : `Remember for ${_siteHost}`;
+  }
   box.addEventListener('change', () => {
     _sitePinned = box.checked;
     if (_sitePinned) {

@@ -790,6 +790,12 @@ button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
   #nivra-wordmark::after { display: none; }
 }
 
+/* "Remember for this site" */
+#site-pref-toggle { accent-color: #efe6d2; width: 13px; height: 13px; cursor: pointer; }
+#site-pref-toggle:disabled { cursor: not-allowed; opacity: 0.4; }
+#site-pref-label { max-width: 190px; }
+#site-pref-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Profile chips */
 .profile-chip {
   background: rgba(255,255,255,0.04);
