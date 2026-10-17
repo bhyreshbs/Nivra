@@ -51,4 +51,5 @@ To test: open any https://…/file.pdf link — it should open in Nivra. Toggle 
 
 Privacy policy URL: https://bhyreshbs.github.io/Nivra/privacy.html
 Website URL (optional): https://bhyresh.me
+Support contact (optional): support@bhyresh.me (forwards to the owner's inbox; do not use a personal address)
 Logo: `assets/nivra-300.png` (300×300). Rebuild the zip with `npm run build && npm run package` before uploading.

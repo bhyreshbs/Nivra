@@ -32,4 +32,4 @@ Nivra saves a few settings in your browser (`chrome.storage.local`): whether Niv
 
 ## Contact
 
-Questions about this policy: bhyreshbs926@gmail.com
+Questions about this policy: support@bhyresh.me
