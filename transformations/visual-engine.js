@@ -145,6 +145,17 @@ export function onTextLayerRendered(pageNumber, pageEl) {
 }
 
 /**
+ * Called by viewer.js when a sidebar thumbnail has been drawn, so Smart Dark can
+ * restore that page's photos in it too. Forwarded in every mode (cheap, and the
+ * overlay is only shown while Smart Dark is active).
+ *
+ * @param {number} pageNumber
+ */
+export function onThumbnailRendered(pageNumber) {
+  SmartDark.onThumbnailRendered(pageNumber);
+}
+
+/**
  * Called by viewer.js when PDF.js finishes (re)painting a page's full-resolution
  * detail canvas — shown over the visible part of a zoomed-in page.
  *

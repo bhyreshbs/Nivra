@@ -127,6 +127,21 @@ export function updateDetailOverlay(pageEl, detailCanvas, regions, viewport) {
 }
 
 /**
+ * Same restoration for a sidebar thumbnail. `stackEl` is a positioned box exactly the
+ * size of the thumbnail `canvas`; `viewport` must be the one the canvas was rendered
+ * with (so its width equals the canvas's physical width). The overlay is only shown
+ * while Smart Dark is active (glass.css).
+ */
+export function updateThumbnailOverlay(stackEl, canvas, regions, viewport) {
+  stackEl?.querySelectorAll(`.${OVERLAY_CLASS}`).forEach(el => el.remove());
+  if (!stackEl || !regions.length || !canvas?.width || !viewport?.width) return;
+  const overlay = _buildOverlay(canvas, regions, 0, 0,
+    canvas.width / viewport.width, canvas.height / viewport.height,
+    { x: 0, y: 0, w: 1, h: 1 }, OVERLAY_CLASS);
+  if (overlay) stackEl.append(overlay);
+}
+
+/**
  * Remove every image overlay (base + detail) from a single page.
  */
 export function removeImageOverlay(pageEl) {

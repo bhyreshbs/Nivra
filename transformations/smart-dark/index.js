@@ -42,7 +42,9 @@ import {
 import {
   probePage, snapshotPage, takeSnapshot, probeRegion, regionStats, classifyPage, classifyImageWithOverlap, clearProbeCache,
 } from './page-analyzer.js';
-import { updateImageOverlay, updateDetailOverlay, removeImageOverlay, removeAllImageOverlays } from './image-protector.js';
+import {
+  updateImageOverlay, updateDetailOverlay, updateThumbnailOverlay, removeImageOverlay, removeAllImageOverlays,
+} from './image-protector.js';
 import { buildSmartDarkFilter } from './fallback.js';
 import * as DebugOverlay from './debug-overlay.js';
 
@@ -208,6 +210,49 @@ export function onTextLayerRendered(pageNumber, pageEl) {
 }
 
 /**
+ * Called by viewer.js when a sidebar thumbnail has been drawn. Restores that page's
+ * photos in the thumbnail the same way as in the page itself.
+ */
+export function onThumbnailRendered(pageNumber) {
+  _syncThumbnailOverlay(pageNumber, null);
+}
+
+/**
+ * Build (or refresh) the photo overlay of a page's thumbnail. Uses the page's real
+ * decision when it has one; otherwise decides from the thumbnail's own pixels (there
+ * is no text layer, so a caption over a picture is not detected — fine at this size).
+ * Never throws.
+ */
+async function _syncThumbnailOverlay(pageNumber, decision) {
+  try {
+    const doc = _pdfDoc;
+    const stack = document.querySelector(`.thumbnail-item[data-page-number="${pageNumber}"] .thumb-stack`);
+    const canvas = stack?.querySelector('canvas:not(.nivra-image-overlay)');
+    if (!doc || !canvas?.width) return;
+
+    const cached = _decisionCache.get(pageNumber);
+    decision = decision ?? (cached && !cached.needsTextRetry ? cached : null);
+
+    const pdfPage = await doc.getPage(pageNumber);
+    if (doc !== _pdfDoc) return;
+    const base = pdfPage.getViewport({ scale: 1 });
+    // Physical-pixel viewport: canvas.width / viewport.width = 1.
+    const vp = pdfPage.getViewport({ scale: canvas.width / base.width });
+
+    if (!decision) {
+      const analysis = await getPageAnalysis(pdfPage);
+      if (doc !== _pdfDoc) return;
+      decision = _decide(pdfPage, analysis, vp, canvas, stack, { snapKey: -pageNumber, noTextLayer: true });
+    }
+
+    const ops = decision.pageClass === 'normal' ? decision.photographicOps : [];
+    updateThumbnailOverlay(stack, canvas, imageOpsToQuads(ops, vp), vp);
+  } catch (err) {
+    console.warn(`[Nivra Smart Dark] Thumbnail ${pageNumber} overlay failed:`, err?.message || err);
+  }
+}
+
+/**
  * Called by visual-engine when PDF.js repaints a page's full-resolution detail
  * canvas (zoomed-in pages: it covers the visible area and follows scrolling).
  * Refreshes only the sharp half of the photo overlay; the page's analysis and
@@ -361,6 +406,7 @@ async function _processPageAsync(pageNumber, viewport, pageEl, canvas) {
         if (!_canvasMatchesViewport(pageNumber, liveCanvas)) return;
         decision = _decide(pdfPage, analysis, vp, liveCanvas, pageEl);
         _decisionCache.set(pageNumber, decision);
+        if (!decision.needsTextRetry) _syncThumbnailOverlay(pageNumber, decision);
       }
     }
 
@@ -420,7 +466,10 @@ function _userSpaceSize(pdfPage) {
 /**
  * Combine operator evidence + pixel evidence into a PageDecision.
  */
-function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
+function _decide(pdfPage, analysis, viewport, canvas, pageEl, opts = {}) {
+  // opts.snapKey: snapshot-cache key (a thumbnail must not reuse / evict the page's own entry)
+  // opts.noTextLayer: there is no text layer to consult (thumbnails) — do not wait for one
+  const snapKey = opts.snapKey ?? pdfPage.pageNumber;
   const { imageOps, textOps, vectorOps, vectorPaints, bgFills } = analysis;
   const vpW = viewport.width, vpH = viewport.height;
   const pageArea = vpW * vpH;
@@ -434,7 +483,7 @@ function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
   }
 
   // Pixel probe of the full page (tiny, cached).
-  const pageStats = regionStats(probePage(pdfPage.pageNumber, canvas));
+  const pageStats = regionStats(probePage(snapKey, canvas));
 
   const pageClass = classifyPage({
     pageStats,
@@ -456,7 +505,7 @@ function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
     // No text boxes although the page draws text: only provisional while the
     // text layer has not rendered yet. Once it has, an empty layer is the
     // truth (invisible / unmapped text) and classification proceeds without it.
-    if (textOps > 0 && textRects.length === 0 && !_textLayerDone.has(pdfPage.pageNumber)) {
+    if (!opts.noTextLayer && textOps > 0 && textRects.length === 0 && !_textLayerDone.has(pdfPage.pageNumber)) {
       invertedOps.push(...imageOps);
       return {
         pageClass,
@@ -489,7 +538,7 @@ function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
 
     // The page is read ONCE (a downscaled CPU copy); every image is judged from
     // it. No per-image canvas, no per-image GPU readback.
-    const snapshot = groups.size ? snapshotPage(pdfPage.pageNumber, canvas) : null;
+    const snapshot = groups.size ? snapshotPage(snapKey, canvas) : null;
 
     const area = r => r.width * r.height;
     const ranked = [...groups.values()].sort((a, b) => area(b.largest) - area(a.largest));
@@ -566,6 +615,10 @@ function _getTextRects(pageEl) {
     if (!text) continue;
     const box = span.getBoundingClientRect();
     if (box.width < 1 || box.height < 1) continue;
+    // A span turned to a non-right angle (a diagonal watermark, "DRAFT", "SAMPLE") has
+    // an axis-aligned box far bigger than its glyphs: it would "cover" whole pictures
+    // and paragraphs. It is not evidence that text sits ON an image, so skip it.
+    if (_isDiagonal(span)) continue;
     textRects.push({
       x: box.left - pageBox.left,
       y: box.top - pageBox.top,
@@ -576,12 +629,27 @@ function _getTextRects(pageEl) {
   return textRects;
 }
 
+/** True when the span is rotated by something other than a multiple of 90° (±10°). */
+function _isDiagonal(span) {
+  const t = getComputedStyle(span).transform;
+  if (!t || t === 'none') return false;
+  const m = /^matrix\(([^)]+)\)$/.exec(t);
+  if (!m) return false;
+  const [a, b] = m[1].split(',').map(Number);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const deg = Math.abs(Math.atan2(b, a) * 180 / Math.PI) % 90;
+  return deg > 10 && deg < 80;
+}
+
 function _measureContentOverlap(imageRect, imageOpIndex, textRects, vectorRects) {
   let textSpanHits = 0;
   let textOverlapArea = 0;
   for (const textRect of textRects) {
     const area = _intersectionArea(imageRect, textRect);
-    if (area > 0) {
+    // Text that only grazes the picture's edge (a caption or heading whose box
+    // overlaps by a few pixels) is not text laid over it: require a real share of
+    // the span to sit inside the image.
+    if (area > 0 && area >= 0.3 * textRect.width * textRect.height) {
       textSpanHits++;
       textOverlapArea += area;
     }

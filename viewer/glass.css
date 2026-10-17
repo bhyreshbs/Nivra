@@ -790,6 +790,19 @@ button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
   #nivra-wordmark::after { display: none; }
 }
 
+/* Thumbnail photo overlay: the canvas's own unfiltered pixels, shown only in Smart Dark */
+.thumb-stack { position: relative; flex: none; line-height: 0; }   /* shrink-wraps the canvas */
+.thumbnail-canvas-wrap canvas.nivra-image-overlay {
+  display: none;
+  filter: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+#viewerWrapper.mode-smart-dark .thumbnail-item:not(.nivra-smart-dark-skip) canvas.nivra-image-overlay {
+  display: block;
+}
+
 /* "Remember for this site" */
 #site-pref-toggle { accent-color: #efe6d2; width: 13px; height: 13px; cursor: pointer; }
 #site-pref-toggle:disabled { cursor: not-allowed; opacity: 0.4; }

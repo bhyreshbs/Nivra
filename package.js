@@ -60,6 +60,11 @@ if (!fs.existsSync(path.join(dist, '_locales', distManifest.default_locale, 'mes
 const zip = path.join(root, `nivra-${manifest.version}.zip`);
 fs.rmSync(zip, { force: true });
 // bsdtar (Windows 10+, macOS) writes a zip with -a; entries use forward slashes.
-execFileSync('tar', ['-a', '-c', '-f', zip, '-C', dist, ...fs.readdirSync(dist)], { stdio: 'inherit' });
+// On Windows use the system bsdtar explicitly: under Git Bash, "tar" is GNU tar, which can
+// neither write zips nor accept "C:\..." paths.
+const tarBin = process.platform === 'win32'
+  ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+  : 'tar';
+execFileSync(tarBin, ['-a', '-c', '-f', zip, '-C', dist, ...fs.readdirSync(dist)], { stdio: 'inherit' });
 
 console.log(`dist/ ready, packaged ${path.basename(zip)}`);

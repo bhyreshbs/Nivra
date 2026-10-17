@@ -35,6 +35,7 @@ import {
   onPageRendered as veOnPageRendered,
   onDetailRendered as veOnDetailRendered,
   onTextLayerRendered as veOnTextLayerRendered,
+  onThumbnailRendered as veOnThumbnailRendered,
   getCurrentMode,
   getState       as veGetState,
   applyState    as veApplyState,
@@ -811,7 +812,11 @@ async function _renderThumbnail(pageNumber, canvasWrap, itemEl) {
       canvas.style.height = `${Math.floor(cssViewport.height)}px`;
 
       canvasWrap.style.minHeight = `${Math.ceil(cssViewport.height)}px`;
-      canvasWrap.replaceChildren(canvas);
+      // A positioned box the size of the canvas: Smart Dark lays its photo overlay in it.
+      const stack = document.createElement('div');
+      stack.className = 'thumb-stack';
+      stack.append(canvas);
+      canvasWrap.replaceChildren(stack);
 
       const ctx = canvas.getContext('2d', { alpha: false });
       await page.render({
@@ -827,6 +832,7 @@ async function _renderThumbnail(pageNumber, canvasWrap, itemEl) {
       page.cleanup();
 
       if (itemEl) itemEl.dataset.rendered = 'true';
+      veOnThumbnailRendered(pageNumber);
     } catch (err) {
       console.warn(`[Nivra] Failed to render thumbnail for page ${pageNumber}:`, err);
       const note = document.createElement('div');
