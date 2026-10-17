@@ -14,7 +14,7 @@
     <div class="popup-header-text">
       <div class="popup-title">
         Nivra
-        <span class="popup-version">v1.5.1</span>
+        <span class="popup-version">v1.6.0</span>
       </div>
       <div class="popup-subtitle">PDF Viewer &amp; Visual Engine</div>
     </div>
@@ -39,6 +39,17 @@
   </div>
 
   <div class="popup-divider"></div>
+
+  <!-- ─── Open a PDF from disk ───────────────────────────────────────── -->
+  <div class="popup-section">
+    <div class="section-label">Open a PDF</div>
+    <label class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Choose or drop a PDF file">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg>
+      <span class="drop-zone-primary" id="drop-zone-text">Drop a PDF here</span>
+      <span class="drop-zone-secondary">or click to choose a file</span>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" hidden>
+    </label>
+  </div>
 
   <!-- ─── Quick Actions ───────────────────────────────────────────────── -->
   <div class="action-list">
@@ -103,6 +114,6 @@
     <div class="popup-footer-text">Nivra Visual Engine v1 · Built by <a href="#" id="footer-link">Bhyresh</a></div>
   </div>
 
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

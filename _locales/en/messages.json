@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Nivra: Dark Mode PDF Viewer",
+    "description": "Extension name (max 75 characters)."
+  },
+  "extDescription": {
+    "message": "Read PDFs in Dark Mode, Invert, Grayscale or High Contrast. Local-first: your files never leave your device.",
+    "description": "Extension description (max 132 characters)."
+  }
+}

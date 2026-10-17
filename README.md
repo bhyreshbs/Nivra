@@ -238,20 +238,18 @@ No document is uploaded to a Nivra-controlled server for normal viewing or trans
 
 ## Contributing
 
-This repo is in early build-out (Phase 1–2). Suggested first issues:
+Run `npm test` for the unit tests and `npm run package` to build the store zip. Open ideas:
 
-- [ ] MV3 manifest + service worker skeleton
-- [ ] `declarativeNetRequest` rule to redirect PDF navigation to `viewer.html`
-- [ ] Minimal `viewer.html` wired to PDF.js (single page render)
-- [ ] Canvas-level True Invert toggle
-- [ ] `chrome.storage.local` preferences scaffold
+- [ ] Structure-preserving export (keep text selectable in a recolored copy)
+- [ ] More languages (`_locales/`)
+- [ ] Viewer-level automated tests
 
-Please open an issue before starting on Phase 4 (Smart Dark) work — it needs a design discussion (content-stream parsing vs. pixel heuristics) before implementation.
+Please open an issue before changing Smart Dark — it needs a design discussion first.
 
 ## Status
 
-🚧 Pre-V1 / Phase 1 (Proof of Concept). Not yet published to the Chrome Web Store.
+v1.6.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download. Packaged for the Microsoft Edge Add-ons store (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 
-TBD — add a LICENSE file before accepting external contributions. Note: PDF.js itself is Apache 2.0; any vendored copy must retain its license and attribution.
+MIT — see `LICENSE`. Bundled PDF.js is Apache-2.0 and Inter is SIL OFL 1.1; both keep their own licenses inside the package.

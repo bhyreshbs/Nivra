@@ -29,10 +29,21 @@
 
         <aside id="thumbnail-sidebar" aria-label="PDF page navigation sidebar">
             <div id="thumbnail-sidebar-inner">
-                <div id="thumbnail-sidebar-header" aria-hidden="true"></div>
+                <div id="thumbnail-sidebar-header">
+                    <span id="nivra-wordmark" role="img" aria-label="Nivra"><span aria-hidden="true">N</span><span aria-hidden="true">I</span><span aria-hidden="true">V</span><span aria-hidden="true">R</span><span aria-hidden="true">A</span></span>
+                </div>
 
-                <div id="thumbnail-scroll">
+                <div id="sidebar-tabs" role="tablist" aria-label="Sidebar view">
+                    <button type="button" id="tab-pages" class="sidebar-tab is-active" role="tab" aria-selected="true" aria-controls="thumbnail-scroll">Pages</button>
+                    <button type="button" id="tab-outline" class="sidebar-tab" role="tab" aria-selected="false" aria-controls="outline-scroll" disabled>Outline</button>
+                </div>
+
+                <div id="thumbnail-scroll" role="tabpanel" aria-labelledby="tab-pages">
                     <div id="thumbnail-list"></div>
+                </div>
+
+                <div id="outline-scroll" role="tabpanel" aria-labelledby="tab-outline" hidden>
+                    <ul id="outline-list"></ul>
                 </div>
 
                 <div id="sidebar-controls">
@@ -67,7 +78,10 @@
             <button id="btn-download" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Download transformed PDF" aria-label="Download transformed PDF">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
             </button>
-            <button id="btn-search" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Search (Ctrl+F)" aria-label="Search">
+            <button id="btn-print" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Print (Ctrl+P)" aria-label="Print">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+            </button>
+            <button id="btn-search"class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Search (Ctrl+F)" aria-label="Search">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             </button>
             <button id="btn-properties" class="toolbar-btn flex items-center justify-center text-ui-textMuted transition-colors" title="Document Properties" aria-label="Document Properties">
@@ -170,53 +184,10 @@
     <!-- ================================================
          FLOATING BOTTOM TOOLBAR
          ================================================ -->
-    <div id="bottom-toolbar" class="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-2 rounded-2xl">
-        <div class="flex items-center gap-1">
-            <button id="btn-zoom-out" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom Out">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-            <button id="btn-zoom-in" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom In">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
-        </div>
-
-        <div id="view-size-control">
-            <button id="btn-view-size" type="button" title="View Size" aria-haspopup="true" aria-expanded="false">
-                <span id="view-size-label">Auto</span>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div id="view-size-popover" class="popover absolute z-50">
-                <div class="py-1">
-                    <button type="button" class="view-size-option" data-scale-value="0.5">50%</button>
-                    <button type="button" class="view-size-option" data-scale-value="0.75">75%</button>
-                    <button type="button" class="view-size-option" data-scale-value="1">100%</button>
-                    <button type="button" class="view-size-option" data-scale-value="1.25">125%</button>
-                    <button type="button" class="view-size-option" data-scale-value="1.5">150%</button>
-                    <button type="button" class="view-size-option" data-scale-value="2">200%</button>
-                    <button type="button" class="view-size-option" data-scale-value="page-width">Width</button>
-                    <button type="button" class="view-size-option" data-scale-value="page-fit">Fit</button>
-                    <button type="button" class="view-size-option is-active" data-scale-value="auto">Auto</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
-
-        <!-- Page Navigation -->
-        <div class="flex items-center gap-0.5">
-            <button id="btn-page-prev" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Previous Page">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-            <div class="flex items-center text-sm font-medium text-ui-text mx-1">
-                <input type="number" id="page-number-input" value="1" min="1" class="w-7 text-center bg-transparent border-b border-ui-border focus:border-nivra-accent focus:outline-none transition-colors text-ui-text text-sm nv-scheme-dark">
-                <span class="text-ui-textMuted ml-1 text-xs">/ <span id="page-count-display">--</span></span>
-            </div>
-            <button id="btn-page-next" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Next Page">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-        </div>
-
-        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+    <div id="bottom-toolbar" class="absolute bottom-5 right-5 z-30 flex items-center gap-2 px-3 py-2 rounded-2xl">
+        <button id="btn-toolbar-collapse" type="button" class="icon-action w-8 h-8 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors shrink-0" title="Collapse toolbar" aria-label="Collapse toolbar" aria-expanded="true">
+            <svg id="collapse-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
 
         <!-- Appearance button -->
         <div class="relative">
@@ -228,7 +199,7 @@
             <!-- =============================================
                  APPEARANCE POPOVER — Premium Redesign
                  ============================================= -->
-            <div id="appearance-popover" class="popover absolute bottom-12 right-0 mb-3 w-[340px] rounded-2xl z-50 overflow-hidden">
+            <div id="appearance-popover" class="popover absolute bottom-12 left-0 mb-3 w-[340px] rounded-2xl z-50 overflow-hidden">
 
                 <!-- Header -->
                 <div class="px-5 py-4 flex items-center justify-between nv-popover-header">
@@ -244,6 +215,18 @@
                     <button id="btn-close-appearance" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
+                </div>
+
+                <!-- Profiles -->
+                <div class="px-4 pt-4">
+                    <div class="text-[10px] font-semibold tracking-widest text-ui-textSubtle uppercase mb-3 px-0.5">Profile</div>
+                    <div id="profile-row" class="flex flex-wrap gap-1.5">
+                        <button type="button" class="profile-chip px-2.5 py-1 rounded-lg border border-ui-border text-xs font-medium text-ui-text" data-profile="reading">Reading</button>
+                        <button type="button" class="profile-chip px-2.5 py-1 rounded-lg border border-ui-border text-xs font-medium text-ui-text" data-profile="night">Night</button>
+                        <button type="button" class="profile-chip px-2.5 py-1 rounded-lg border border-ui-border text-xs font-medium text-ui-text" data-profile="study">Study</button>
+                        <button type="button" class="profile-chip px-2.5 py-1 rounded-lg border border-ui-border text-xs font-medium text-ui-text" data-profile="focus">Focus</button>
+                        <button type="button" class="profile-chip px-2.5 py-1 rounded-lg border border-ui-border text-xs font-medium text-ui-text" data-profile="original">Original</button>
+                    </div>
                 </div>
 
                 <!-- Mode selector -->
@@ -336,10 +319,66 @@
                 <!-- Footer -->
                 <div class="px-4 py-3 flex justify-between items-center nv-popover-footer">
                     <button id="btn-reset-appearance" class="text-xs font-medium text-ui-textMuted hover:text-ui-text transition-colors">↺ Reset</button>
-                    <div class="text-[10px] text-ui-textSubtle">Nivra Visual Engine v1</div>
+                    <label id="site-pref-label" class="flex items-center gap-1.5 text-[10px] text-ui-textMuted cursor-pointer" title="Use this appearance for every PDF from this website">
+                        <input type="checkbox" id="site-pref-toggle" disabled>
+                        <span id="site-pref-text">Remember for this site</span>
+                    </label>
                 </div>
             </div>
         </div>
+
+        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+
+        <div class="flex items-center gap-1">
+            <button id="btn-zoom-out" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom Out">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <button id="btn-zoom-in" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Zoom In">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+        </div>
+
+        <div id="view-size-control">
+            <button id="btn-view-size" type="button" title="View Size" aria-haspopup="true" aria-expanded="false">
+                <span id="view-size-label">Fit</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="view-size-popover" class="popover absolute z-50">
+                <div class="py-1">
+                    <button type="button" class="view-size-option" data-scale-value="0.5">50%</button>
+                    <button type="button" class="view-size-option" data-scale-value="0.75">75%</button>
+                    <button type="button" class="view-size-option" data-scale-value="1">100%</button>
+                    <button type="button" class="view-size-option" data-scale-value="1.25">125%</button>
+                    <button type="button" class="view-size-option" data-scale-value="1.5">150%</button>
+                    <button type="button" class="view-size-option" data-scale-value="2">200%</button>
+                    <button type="button" class="view-size-option" data-scale-value="page-width">Width</button>
+                    <button type="button" class="view-size-option is-active" data-scale-value="page-fit">Fit</button>
+                    <button type="button" class="view-size-option" data-scale-value="auto">Auto</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+
+        <!-- Page Navigation -->
+        <div class="flex items-center gap-0.5">
+            <button id="btn-page-prev" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Previous Page">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <div class="flex items-center text-sm font-medium text-ui-text mx-1">
+                <input type="number" id="page-number-input" value="1" min="1" class="w-7 text-center bg-transparent border-b border-ui-border focus:border-nivra-accent focus:outline-none transition-colors text-ui-text text-sm nv-scheme-dark">
+                <span class="text-ui-textMuted ml-1 text-xs">/ <span id="page-count-display">--</span></span>
+            </div>
+            <button id="btn-page-next" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Next Page">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+        </div>
+
+        <div class="h-5 w-px bg-ui-border mx-0.5 opacity-50"></div>
+
+        <button id="btn-rotate" class="icon-action w-8 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Rotate clockwise (R)" aria-label="Rotate clockwise">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+        </button>
     </div><!-- end bottom toolbar -->
 
     <!-- ================================================

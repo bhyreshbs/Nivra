@@ -36,8 +36,14 @@ import {
   onDetailRendered as veOnDetailRendered,
   onTextLayerRendered as veOnTextLayerRendered,
   getCurrentMode,
+  getState       as veGetState,
+  applyState    as veApplyState,
 } from '../transformations/visual-engine.js';
 import { exportTransformedPdf, renderPagesForOutput } from '../transformations/pdf-export.js';
+import {
+  loadPrefs, savePrefs, PROFILES, getSiteAppearance, setSiteAppearance,
+} from '../settings/preferences.js';
+import { takeFile } from '../settings/handoff.js';
 
 // ─── PDF.js worker ────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc = '../pdfjs/build/pdf.worker.mjs';
@@ -206,30 +212,106 @@ function _isNetworkFailure(err) {
 }
 
 let _initialPage = 0;
+let _prefs = null;
+let _localFile = null;      // {name, blob} when opened from the popup's picker / drop zone
+let _siteHost = '';
+let _sitePinned = false;
+
+/** Hostname of an http(s) PDF address; '' for local files, blobs and picked files. */
+function _hostOf(url) {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.hostname : '';
+  } catch (_) { return ''; }
+}
+
+/** "Remember for this site": pin the current look to the PDF's website. */
+function _setupSitePref() {
+  const box   = document.getElementById('site-pref-toggle');
+  const label = document.getElementById('site-pref-text');
+  if (!box) return;
+  if (!_siteHost) {
+    box.disabled = true;
+    if (label) label.textContent = 'Remember for this site';
+    return;
+  }
+  box.disabled = false;
+  box.checked = _sitePinned;
+  if (label) label.textContent = `Remember for ${_siteHost}`;
+  box.addEventListener('change', () => {
+    _sitePinned = box.checked;
+    if (_sitePinned) {
+      const { mode, brightness, contrast } = veGetState();
+      setSiteAppearance(_siteHost, { mode, brightness, contrast });
+    } else {
+      setSiteAppearance(_siteHost, null);
+    }
+  });
+}
+
+/** Mark the profile chip whose mode and sliders match the current state (none if custom). */
+function _highlightProfile({ mode, brightness, contrast }) {
+  document.querySelectorAll('.profile-chip').forEach(chip => {
+    const p = PROFILES[chip.dataset.profile];
+    chip.classList.toggle('active',
+      !!p && p.mode === mode && p.brightness === brightness && p.contrast === contrast);
+  });
+}
 
 // ─── Initialise ───────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Visual engine (sets up UI and applies default Smart Dark)
-  setupVisualEngine();
+  // Integrated-GPU / low-end machines get the lighter visual treatment (see glass.css).
+  if ((navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4) {
+    document.documentElement.classList.add('perf-lite');
+  }
 
   // The error overlay's retry button. Wired here, before anything can fail:
   // an inline onclick="" attribute is blocked by the extension's CSP.
   document.getElementById('btn-error-retry')?.addEventListener('click', () => location.reload());
 
-  // 2. Resolve file URL
+  // 1. Where the PDF comes from: a URL (?file=) or a file handed over by the popup (?idb=)
   const { url, fragment } = _resolveFileParam(window.location.search, window.location.hash);
+  const idbKey = new URLSearchParams(window.location.search).get('idb');
   currentFileUrl = url;
   _initialPage = parseInt(new URLSearchParams(fragment).get('page'), 10) || 0;
-  if (!currentFileUrl) { _showError('No PDF file specified.'); return; }
-  if (!_isAllowedPdfUrl(currentFileUrl)) {
-    // Fixed text on purpose: never echo the rejected address back into the page.
-    _showError('Nivra can only open PDFs from http, https, file or blob addresses.');
-    return;
+
+  if (!currentFileUrl && idbKey) {
+    try {
+      _localFile = await takeFile(idbKey);
+    } catch (err) {
+      console.warn('[Nivra] Could not read the chosen file:', err);
+    }
+    if (!_localFile) {
+      _showError('That file is no longer available. Choose it again from the Nivra popup.');
+      return;
+    }
+  } else {
+    if (!currentFileUrl) { _showError('No PDF file specified.'); return; }
+    if (!_isAllowedPdfUrl(currentFileUrl)) {
+      // Fixed text on purpose: never echo the rejected address back into the page.
+      _showError('Nivra can only open PDFs from http, https, file or blob addresses.');
+      return;
+    }
   }
+
+  // 2. Saved preferences (global, overridden by a pinned per-site appearance), then the engine
+  _prefs = await loadPrefs();
+  _sidebarOpen = _prefs.sidebar;
+  _siteHost = _hostOf(currentFileUrl);
+  const siteLook = await getSiteAppearance(_siteHost);
+  _sitePinned = !!siteLook;
+  const startLook = { ..._prefs, ...(siteLook || {}) };
+  setupVisualEngine(startLook, state => {
+    if (_sitePinned) setSiteAppearance(_siteHost, state);
+    else savePrefs(state);
+    _highlightProfile(state);
+  });
+  _highlightProfile(startLook);
+  _setupSitePref();
 
   // 3. Set document title
   try {
-    const fname  = _fileNameFromUrl(currentFileUrl) || 'Document';
+    const fname  = _localFile?.name || _fileNameFromUrl(currentFileUrl) || 'Document';
     const titleEl = document.getElementById('document-title');
     if (titleEl) { titleEl.textContent = fname; titleEl.title = fname; }
     document.title = fname + ' — Nivra';
@@ -289,18 +371,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 6. Wire PDF.js events
 
   eventBus.on('pagesinit', () => {
-    pdfViewer.currentScaleValue = 'auto';
-    _updateScaleUI('auto');
+    pdfViewer.currentScaleValue = _prefs?.scale || 'page-fit';
+    _updateScaleUI(pdfViewer.currentScaleValue);
     if (_initialPage) {
       pdfViewer.currentPageNumber = Math.min(_initialPage, pdfViewer.pagesCount);
       _initialPage = 0;
     }
-    _setTwoPageView(false, { preservePage: true });
+    _setTwoPageView(!!_prefs?.twoPage, { preservePage: true });
     _refreshThumbnailObservation();
   });
 
   eventBus.on('scalechanging', ({ presetValue, scale }) => {
     _updateScaleUI(presetValue || scale);
+    savePrefs({ scale: String(presetValue || scale) });
   });
 
   eventBus.on('pagechanging', ({ pageNumber }) => {
@@ -361,11 +444,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 7. Load PDF
   const pdfjsUrl = new URL('../pdfjs/', import.meta.url).href;
   try {
+    const source = _localFile
+      ? { data: new Uint8Array(await _localFile.blob.arrayBuffer()) }
+      : { url: currentFileUrl };
     pdfDoc = await _openPdf({
-      url:                 currentFileUrl,
+      ...source,
       // Defence in depth: the extension CSP already forbids eval; this also stops
       // PDF.js from even trying the eval-based font fast path (and logging the block).
       isEvalSupported:     false,
+      // Errors only. PDF.js otherwise logs a console warning for every quirk it works
+      // around in a document's fonts (e.g. "TT: undefined function: 22"), which Chrome
+      // and Edge then list under the extension's Errors. They are harmless.
+      verbosity:           pdfjsLib.VerbosityLevel.ERRORS,
       standardFontDataUrl: pdfjsUrl + 'web/standard_fonts/',
       cMapUrl:             pdfjsUrl + 'web/cmaps/',
       cMapPacked:          true,
@@ -390,6 +480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.warn('[Nivra] Failed to populate document properties:', err);
     });
     _buildThumbnailSidebar();
+    _buildOutline().catch(err => console.warn('[Nivra] Could not read the outline:', err));
   } catch (err) {
     _showError('Could not load PDF: ' + (err.message || String(err)));
     return;
@@ -487,6 +578,25 @@ function _setupUI() {
   // ── Print ─────────────────────────────────────────────────────────────────
   document.getElementById('btn-print')?.addEventListener('click', () => _printDocument());
 
+  // ── Sidebar tabs / toolbar collapse ───────────────────────────────────────
+  document.getElementById('tab-pages')?.addEventListener('click', () => _setSidebarTab('pages'));
+  document.getElementById('tab-outline')?.addEventListener('click', () => _setSidebarTab('outline'));
+  document.getElementById('btn-toolbar-collapse')?.addEventListener('click', () => {
+    _setToolbarCollapsed(!document.getElementById('bottom-toolbar')?.classList.contains('is-collapsed'));
+  });
+  if (_prefs?.toolbarCollapsed) _setToolbarCollapsed(true);
+
+  // ── Rotate ────────────────────────────────────────────────────────────────
+  document.getElementById('btn-rotate')?.addEventListener('click', _rotateClockwise);
+
+  // ── Profiles ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.profile-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const p = PROFILES[chip.dataset.profile];
+      if (p) veApplyState(p);
+    });
+  });
+
   // ── Search ────────────────────────────────────────────────────────────────
   const findInput = document.getElementById('find-input');
   findInput?.addEventListener('input',   ()  => _dispatchFind(''));
@@ -521,8 +631,8 @@ function _setupUI() {
       document.getElementById('btn-zoom-out')?.click();
     } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
       e.preventDefault();
-      pdfViewer.currentScaleValue = 'auto';
-      _updateScaleUI('auto');
+      pdfViewer.currentScaleValue = 'page-fit';
+      _updateScaleUI('page-fit');
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
       e.preventDefault();
       _printDocument();
@@ -532,6 +642,9 @@ function _setupUI() {
     } else if (e.key === 'Escape') {
       _closePropertiesModal();
       _closeAll();
+    } else if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'r' || e.key === 'R')) {
+      e.preventDefault();
+      _rotateClockwise();
     } else if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !e.defaultPrevented) {
       const next = e.key === 'ArrowDown' || e.key === 'PageDown';
       const prev = e.key === 'ArrowUp'   || e.key === 'PageUp';
@@ -583,6 +696,7 @@ function _openPropertiesModal() {
 
 function _setSidebarOpen(open) {
   _sidebarOpen = !!open;
+  savePrefs({ sidebar: _sidebarOpen });
   const wrapper = document.getElementById('viewerWrapper');
   const toggle = document.getElementById('sidebar-toggle');
   if (wrapper) wrapper.classList.toggle('sidebar-open', _sidebarOpen);
@@ -743,6 +857,7 @@ function _goToPage(pageNumber, { smooth = false } = {}) {
 
 function _setTwoPageView(enabled, { preservePage = false } = {}) {
   _twoPageView = !!enabled;
+  savePrefs({ twoPage: _twoPageView });
   const currentPage = preservePage ? (pdfViewer?.currentPageNumber || 1) : 1;
 
   if (pdfViewer) {
@@ -761,6 +876,12 @@ function _updateTwoPageViewButton() {
   const btn = document.getElementById('btn-two-page-view');
   if (!btn) return;
   btn.setAttribute('aria-pressed', String(_twoPageView));
+}
+
+/** Rotate every page 90° clockwise for this session (the file is never changed). */
+function _rotateClockwise() {
+  if (!pdfViewer) return;
+  pdfViewer.pagesRotation = (pdfViewer.pagesRotation + 90) % 360;
 }
 
 function _closePropertiesModal() {
@@ -841,6 +962,7 @@ async function _resolveFileSize(meta, downloadInfo) {
 function _resolveFileName(meta) {
   return _firstNonEmpty(
     meta?.contentDispositionFilename,
+    _localFile?.name,
     _fileNameFromUrl(currentFileUrl),
     'Document.pdf',
   );
@@ -1107,6 +1229,96 @@ function _showToast(text) {
     update: t => { el.textContent = t; },
     hide: () => { el.classList.remove('is-visible'); setTimeout(() => el.remove(), 400); },
   };
+}
+
+// ─── Outline (bookmarks) ──────────────────────────────────────────────────────
+async function _buildOutline() {
+  const outline = await pdfDoc?.getOutline();
+  const tab  = document.getElementById('tab-outline');
+  const list = document.getElementById('outline-list');
+  if (!tab || !list || !outline?.length) return;   // no bookmarks: the tab stays disabled
+
+  list.replaceChildren(_outlineItems(outline, 0));
+  tab.disabled = false;
+}
+
+function _outlineItems(items, depth) {
+  const ul = document.createElement('ul');
+  ul.className = 'outline-level';
+  for (const item of items) {
+    const li = document.createElement('li');
+    const row = document.createElement('div');
+    row.className = 'outline-row';
+    row.style.setProperty('--depth', depth);
+
+    const hasKids = item.items?.length > 0;
+    const twist = document.createElement('button');
+    twist.type = 'button';
+    twist.className = 'outline-twist';
+    twist.setAttribute('aria-label', 'Expand section');
+    twist.setAttribute('aria-expanded', 'false');
+    twist.textContent = hasKids ? '›' : '';
+    twist.disabled = !hasKids;
+
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'outline-link';
+    link.textContent = item.title?.trim() || 'Untitled';
+    link.title = link.textContent;
+    if (item.bold) link.classList.add('is-bold');
+    if (item.italic) link.classList.add('is-italic');
+    link.addEventListener('click', () => _followOutlineItem(item));
+
+    row.append(twist, link);
+    li.append(row);
+
+    if (hasKids) {
+      const kids = _outlineItems(item.items, depth + 1);
+      kids.hidden = true;
+      li.append(kids);
+      twist.addEventListener('click', () => {
+        kids.hidden = !kids.hidden;
+        twist.setAttribute('aria-expanded', String(!kids.hidden));
+        li.classList.toggle('is-open', !kids.hidden);
+      });
+    }
+    ul.append(li);
+  }
+  return ul;
+}
+
+function _followOutlineItem(item) {
+  if (item.dest) {
+    pdfLinkService.goToDestination(item.dest);
+  } else if (item.url && /^https?:\/\//i.test(item.url)) {
+    window.open(item.url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+function _setSidebarTab(which) {
+  const outline = which === 'outline';
+  document.getElementById('thumbnail-scroll').hidden = outline;
+  document.getElementById('outline-scroll').hidden = !outline;
+  for (const [id, active] of [['tab-pages', !outline], ['tab-outline', outline]]) {
+    const tab = document.getElementById(id);
+    tab?.classList.toggle('is-active', active);
+    tab?.setAttribute('aria-selected', String(active));
+  }
+  if (!outline) _refreshThumbnailObservation();
+}
+
+// ─── Bottom toolbar collapse ──────────────────────────────────────────────────
+function _setToolbarCollapsed(collapsed) {
+  const bar = document.getElementById('bottom-toolbar');
+  const btn = document.getElementById('btn-toolbar-collapse');
+  if (!bar || !btn) return;
+  if (collapsed) _closeAll();
+  bar.classList.toggle('is-collapsed', collapsed);
+  btn.setAttribute('aria-expanded', String(!collapsed));
+  const label = collapsed ? 'Expand toolbar' : 'Collapse toolbar';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  savePrefs({ toolbarCollapsed: collapsed });
 }
 
 // ─── Scale UI helper ──────────────────────────────────────────────────────────

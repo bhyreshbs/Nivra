@@ -620,6 +620,185 @@ button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
 .mode-card.active .mode-icon { background: rgba(255,255,255,0.16) !important; color: #fff; }
 .mode-card.active .mode-name { color: #fff; }
 
+/* ── Bottom toolbar: bottom-right, collapsible ─────────────────────────────── */
+#bottom-toolbar {
+  transition: transform 0.5s var(--nv-ease);
+  will-change: transform;
+}
+/* Slide right until only the toggle (leftmost control) stays on screen. */
+#bottom-toolbar.is-collapsed { transform: translateX(calc(100% - 64px)); }
+#bottom-toolbar > :not(#btn-toolbar-collapse) {
+  transition: opacity 0.3s ease 0.1s, visibility 0s;
+}
+#bottom-toolbar.is-collapsed > :not(#btn-toolbar-collapse) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0s 0.2s;
+}
+#btn-toolbar-collapse svg { transition: transform 0.5s var(--nv-spring); }
+#bottom-toolbar.is-collapsed #collapse-chevron { transform: rotate(180deg); }
+
+/* ── Sidebar: animated NIVRA wordmark ──────────────────────────────────────── */
+#thumbnail-sidebar-header {
+  display: flex;
+  align-items: center;
+}
+#nivra-wordmark {
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  letter-spacing: 0.34em;
+  user-select: none;
+  color: #fff;
+}
+/* A scan beam crosses the word; each letter flashes white as the beam hits it, then
+   cools to near-black before the next pass. Letter delays = beam travel time to each
+   glyph's centre, so the two stay in step (loop: 3.6 s, beam: first 1.0 s). */
+#nivra-wordmark > span {
+  animation: nv-wordmark-letter 3.6s linear infinite;
+}
+#nivra-wordmark > span:nth-child(1) { animation-delay: 0.09s; }
+#nivra-wordmark > span:nth-child(2) { animation-delay: 0.26s; }
+#nivra-wordmark > span:nth-child(3) { animation-delay: 0.41s; }
+#nivra-wordmark > span:nth-child(4) { animation-delay: 0.60s; }
+#nivra-wordmark > span:nth-child(5) { animation-delay: 0.82s; }
+@keyframes nv-wordmark-letter {
+  0%   { color: #fff;    text-shadow: 0 0 12px rgba(255,255,255,0.95); }
+  8%   { color: #fff;    text-shadow: 0 0 6px  rgba(255,255,255,0.45); }
+  30%  { color: #fff;    text-shadow: none; }
+  70%  { color: #c4c4c4; }
+  92%  { color: #4a4a4a; }
+  100% { color: #4a4a4a; text-shadow: none; }
+}
+#nivra-wordmark::after {
+  content: "";
+  position: absolute;
+  top: -5px; bottom: -5px; left: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, #fff 30%, #fff 70%, transparent);
+  box-shadow: 0 0 10px 1px rgba(255,255,255,0.7), -14px 0 18px rgba(255,255,255,0.18);
+  opacity: 0;
+  animation: nv-wordmark-beam 3.6s linear infinite;
+  will-change: transform, opacity;
+}
+@keyframes nv-wordmark-beam {
+  0%   { transform: translateX(-4px);  opacity: 0; }
+  3%   { opacity: 1; }
+  25%  { opacity: 1; }
+  28%  { transform: translateX(4.4em); opacity: 0; }
+  100% { transform: translateX(4.4em); opacity: 0; }
+}
+#viewerWrapper:not(.sidebar-open) #nivra-wordmark > span,
+#viewerWrapper:not(.sidebar-open) #nivra-wordmark::after { animation-play-state: paused; }
+
+/* ── Sidebar tabs + outline ────────────────────────────────────────────────── */
+#sidebar-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+.sidebar-tab {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nv-fg-dim);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.sidebar-tab:hover:not(:disabled) { background: rgba(255,255,255,0.10); color: #fff; }
+.sidebar-tab.is-active { background: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.5); color: #fff; }
+.sidebar-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+
+#outline-scroll { flex: 1; min-height: 0; overflow: auto; padding: 10px 6px 12px; }
+#outline-scroll[hidden] { display: none; }
+#outline-list, #outline-list ul { list-style: none; margin: 0; padding: 0; }
+.outline-row {
+  display: flex;
+  align-items: flex-start;
+  padding-left: calc(var(--depth, 0) * 14px);
+}
+.outline-twist {
+  flex: 0 0 22px;
+  height: 28px;
+  color: var(--nv-fg-dim);
+  font-size: 15px;
+  line-height: 28px;
+  transition: transform 0.25s var(--nv-ease);
+}
+.outline-twist[aria-expanded="true"] { transform: rotate(90deg); }
+.outline-twist:disabled { visibility: hidden; }
+.outline-link {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--nv-fg);
+  overflow-wrap: anywhere;
+  transition: background-color 0.15s ease;
+}
+.outline-link:hover { background: rgba(255,255,255,0.10); }
+.outline-link.is-bold { font-weight: 700; }
+.outline-link.is-italic { font-style: italic; }
+
+/* ── Rendering cost ────────────────────────────────────────────────────────── */
+/* Each page's filtered canvas gets its own compositor layer, so scrolling moves a
+   cached, already-filtered texture instead of re-running the invert filter. */
+.pdfViewer .page .canvasWrapper { will-change: transform; }
+/* One cheap shadow per page instead of three large blurs (the old ones were
+   re-rasterised on hover and for every page in view). */
+#viewerWrapper .pdfViewer .page,
+#viewerWrapper .pdfViewer .page:hover {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 10px 28px rgba(0,0,0,0.55) !important;
+  transition: none;
+}
+/* Set by viewer.js on machines with ≤4 cores or ≤4 GB RAM (integrated GPU / low-end CPU):
+   no backdrop blur, no ambient animation, no entrance animations. */
+.perf-lite #viewerWrapper::before { display: none; animation: none; }
+.perf-lite #bottom-toolbar::after,
+.perf-lite #side-toolbar,
+.perf-lite #view-size-popover,
+.perf-lite #search-overlay,
+.perf-lite #appearance-popover,
+.perf-lite #properties-dialog,
+.perf-lite #thumbnail-sidebar-inner,
+.perf-lite #sidebar-toggle,
+.perf-lite #properties-modal {
+  -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+  background: #15161a !important;
+}
+.perf-lite #properties-modal { background: rgba(0,0,0,0.7) !important; }
+.perf-lite .pdfViewer .page .canvasWrapper,
+.perf-lite #bottom-toolbar, .perf-lite #side-toolbar, .perf-lite #sidebar-toggle { animation: none !important; }
+.perf-lite #bottom-toolbar::before, .perf-lite #side-toolbar::before,
+.perf-lite #sidebar-toggle::before { animation: none !important; }
+.perf-lite #nivra-wordmark > span, .perf-lite #nivra-wordmark::after { animation: none; }
+.perf-lite #nivra-wordmark::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  #nivra-wordmark > span, #nivra-wordmark::after { animation: none; }
+  #nivra-wordmark::after { display: none; }
+}
+
+/* Profile chips */
+.profile-chip {
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.profile-chip:hover { background: rgba(255,255,255,0.10); border-color: rgba(255,255,255,0.32) !important; }
+.profile-chip.active { background: rgba(255,255,255,0.17); border-color: rgba(255,255,255,0.78) !important; color: #fff; }
+
 /* Sliders */
 input[type=range] { cursor: pointer; touch-action: none; --p: 50%; }
 input[type=range]::-webkit-slider-runnable-track {

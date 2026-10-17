@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivra — Privacy Policy</title>
+<style>
+  body { font: 16px/1.6 Georgia, 'Iowan Old Style', serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.25rem; color: #1d1b16; background: #faf6ec; }
+  h1 { font-weight: 400; letter-spacing: .02em; }
+  h2 { font-weight: 400; margin-top: 2.2rem; border-bottom: 1px solid #d8cfb8; padding-bottom: .3rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; vertical-align: top; padding: .5rem .6rem; border-bottom: 1px solid #d8cfb8; }
+  code { background: #efe6d2; padding: 0 .25em; border-radius: 3px; }
+  .meta { color: #6c6552; }
+</style>
+</head>
+<body>
+<h1>Nivra — Privacy Policy</h1>
+<p class="meta">Last updated: 17 October 2026</p>
+
+<p>Nivra is a PDF viewer extension for Microsoft Edge and Chromium browsers. It is built to work entirely on your device.</p>
+
+<h2>What Nivra does with your documents</h2>
+<ul>
+  <li>PDFs are opened, rendered and recolored <strong>locally in your browser</strong>. They are never uploaded to Nivra or to any server run by the developer.</li>
+  <li>When you open a PDF from a web address, your browser downloads it from that website exactly as it would without Nivra (using your normal cookies for that site, so PDFs behind a login still open).</li>
+  <li>PDFs you choose or drop in the Nivra popup are held temporarily in your browser's local storage so the viewer tab can open them, then removed. Anything left behind is deleted within a day.</li>
+  <li>Downloaded or printed "transformed" copies are generated on your device.</li>
+</ul>
+
+<h2>What Nivra stores</h2>
+<p>Nivra saves a few settings in your browser (<code>chrome.storage.local</code>): whether Nivra is turned on, your display mode, brightness, contrast, zoom, sidebar and toolbar state, and — if you tick "Remember for this site" — the appearance chosen for that website's hostname. This data stays on your device. It is not synced or transmitted. Removing the extension deletes it.</p>
+
+<h2>What Nivra does not do</h2>
+<ul>
+  <li>No accounts, analytics, telemetry, advertising or tracking.</li>
+  <li>No data is sold, shared or sent to third parties.</li>
+  <li>No remote code is loaded; everything Nivra runs ships inside the extension package.</li>
+</ul>
+
+<h2>Permissions</h2>
+<table>
+  <tr><th>Permission</th><th>Why</th></tr>
+  <tr><td><code>declarativeNetRequest</code> / <code>declarativeNetRequestWithHostAccess</code></td><td>Redirect navigations to PDF files into Nivra's viewer.</td></tr>
+  <tr><td>Host access to <code>*.pdf</code> URLs (web and <code>file://</code>)</td><td>Detect PDF addresses and read the PDF to display it. Nivra does not request access to other pages.</td></tr>
+  <tr><td><code>storage</code></td><td>Save the settings listed above.</td></tr>
+  <tr><td><code>activeTab</code></td><td>Let the toolbar popup see whether the current tab is a PDF so it can offer "Open in Nivra".</td></tr>
+</table>
+
+<h2>Contact</h2>
+<p>Questions about this policy: <a href="mailto:bhyreshbs926@gmail.com">bhyreshbs926@gmail.com</a></p>
+</body>
+</html>

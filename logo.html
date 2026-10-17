@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nivra — logo sheet</title>
+<style>
+  :root { --ink:#17140f; --paper:#efe6d2; --vermilion:#d9482b; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 24px 80px;
+    background: #2a2722; color: #e9dfc8;
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  }
+  h1 { font-weight: 400; font-size: 28px; margin: 0 0 6px; letter-spacing: .02em; }
+  p.note { margin: 0 0 36px; color: #b4a98f; max-width: 62ch; line-height: 1.5; font-size: 15px; }
+  section { max-width: 980px; margin: 0 auto 56px; }
+  h2 { font-weight: 400; font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: #b4a98f; margin: 0 0 18px; border-bottom: 1px solid #4a4538; padding-bottom: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; }
+  .cell { text-align: center; font-size: 12px; color: #b4a98f; }
+  .cell > div { margin-top: 8px; }
+  .big { width: 420px; height: 420px; }
+  .tile { padding: 22px; border-radius: 14px; display: inline-block; }
+  .on-light { background: #f4f1ea; }
+  .on-dark  { background: #0e0d0b; }
+  .on-edge  { background: #1f2a44; }
+  button {
+    font: inherit; font-size: 14px; color: var(--ink); background: var(--paper);
+    border: 0; border-radius: 4px 9px 5px 8px; padding: 9px 16px; cursor: pointer;
+    box-shadow: 2px 2px 0 var(--vermilion);
+  }
+  button:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--vermilion); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+
+  /* 440 x 280 promo tile — screenshot this box at 100% zoom */
+  #promo {
+    width: 440px; height: 280px; position: relative; overflow: hidden;
+    background: var(--ink); color: var(--paper);
+    display: flex; align-items: center; gap: 22px; padding: 0 26px;
+  }
+  #promo::before { /* paper half, cut on a slant like the mark's fold */
+    content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 17%;
+    background: var(--paper); clip-path: polygon(45% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  #promo svg.mark { width: 128px; height: 128px; flex: none; position: relative; z-index: 1; }
+  #promo .copy { position: relative; z-index: 1; }
+  #promo .name { font-size: 40px; letter-spacing: .12em; line-height: 1; }
+  #promo .tag  { margin-top: 10px; font-size: 15px; line-height: 1.35; color: #d8cdb4; max-width: 17ch; }
+  #promo .mini { position: absolute; z-index: 1; right: 22px; bottom: 18px; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     THE MARK
+     A page split down the middle, day on one side, night on the other.
+     The letter N runs straight across the seam and inverts with it:
+     paper-on-ink on the left, ink-on-paper on the right. That is what
+     Nivra does to a document. The vermilion disc is the sun / the moon,
+     printed slightly off-register like a two-colour woodblock.
+     ============================================================ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- hand-cut wobble for edges -->
+    <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <!-- ink bleed: tiny blur then hard threshold -->
+    <filter id="bleed" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="G" yChannelSelector="R" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.9" result="b"/>
+      <feComponentTransfer in="b"><feFuncA type="discrete" tableValues="0 0 1 1 1"/></feComponentTransfer>
+    </filter>
+    <!-- paper tooth / press grain -->
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="11" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05"/>
+    </filter>
+  </defs>
+</svg>
+
+<template id="mark">
+  <svg class="mark" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Nivra">
+    <defs>
+      <clipPath id="L"><rect x="0" y="0" width="256" height="512"/></clipPath>
+      <clipPath id="R"><rect x="256" y="0" width="256" height="512"/></clipPath>
+      <clipPath id="body"><path d="M62 18 C170 8 342 12 452 20 C494 24 500 44 500 70 C506 180 504 330 498 446 C496 486 480 500 446 502 C340 508 172 506 66 500 C26 498 12 484 12 448 C6 336 10 178 14 66 C16 36 30 22 62 18 Z"/></clipPath>
+      <!-- the N, cut by hand: slightly uneven stems, chiselled terminals -->
+      <path id="N" d="M108 398 L113 126 L128 116 L176 119 L340 294 L340 124 L352 114 L405 118 L401 392 L394 399 L346 396 L174 218 L172 392 L162 401 Z"/>
+    </defs>
+
+    <g clip-path="url(#body)">
+      <!-- two halves of the page -->
+      <g filter="url(#bleed)">
+        <rect x="0" y="0" width="256" height="512" fill="#17140f"/>
+        <rect x="256" y="0" width="256" height="512" fill="#efe6d2"/>
+      </g>
+
+      <!-- the N, inverted across the seam -->
+      <g filter="url(#wobble)">
+        <use href="#N" clip-path="url(#L)" fill="#efe6d2"/>
+        <use href="#N" clip-path="url(#R)" fill="#17140f"/>
+      </g>
+
+      <!-- off-register sun / moon -->
+      <g style="mix-blend-mode:multiply" filter="url(#wobble)">
+        <circle cx="262" cy="78" r="34" fill="#d9482b"/>
+      </g>
+      <circle cx="257" cy="74" r="34" fill="none" stroke="#17140f" stroke-opacity=".0"/>
+
+      <!-- the seam: a hairline, slightly crooked -->
+      <path d="M256 20 L257 160 L255 300 L256 500" stroke="#d9482b" stroke-width="2" fill="none" opacity=".55" filter="url(#wobble)"/>
+
+      <!-- press grain and a little wear -->
+      <rect width="512" height="512" filter="url(#grain)" opacity=".28" style="mix-blend-mode:multiply"/>
+      <g fill="#efe6d2" opacity=".5">
+        <circle cx="64" cy="440" r="1.6"/><circle cx="92" cy="470" r="1.1"/><circle cx="188" cy="64" r="1.4"/>
+        <circle cx="30" cy="250" r="1.2"/><circle cx="216" cy="452" r="1"/>
+      </g>
+      <g fill="#17140f" opacity=".45">
+        <circle cx="468" cy="60" r="1.5"/><circle cx="440" cy="468" r="1.2"/><circle cx="352" cy="460" r="1.1"/>
+        <circle cx="486" cy="300" r="1.3"/>
+      </g>
+    </g>
+  </svg>
+</template>
+
+<section>
+  <h1>Nivra — the mark</h1>
+  <p class="note">A page split into day and night. The N runs across the seam and flips with it —
+    paper on ink, ink on paper — which is exactly what Nivra does to a document. The vermilion disc is the
+    sun or the moon, printed a hair off-register like a two-colour woodblock print.
+    Take your screenshot of the large one (or use the PNG buttons below).</p>
+
+  <div class="row">
+    <div class="cell"><span class="big" id="big"></span></div>
+    <div>
+      <div class="row">
+        <div class="cell"><div class="tile on-light"><span data-size="128"></span></div><div>128 on light</div></div>
+        <div class="cell"><div class="tile on-dark"><span data-size="128"></span></div><div>128 on dark</div></div>
+        <div class="cell"><div class="tile on-edge"><span data-size="48"></span></div><div>48 on Edge blue</div></div>
+        <div class="cell"><div class="tile on-dark"><span data-size="16"></span></div><div>16 toolbar</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button data-png="1024">Download 1024 PNG</button>
+    <button data-png="300">Download 300 PNG (Edge store logo)</button>
+    <button data-png="128">128</button>
+    <button data-png="48">48</button>
+    <button data-png="16">16</button>
+    <button id="dl-svg">Download SVG</button>
+  </div>
+</section>
+
+<section>
+  <h2>What is a "promotional tile"?</h2>
+  <p class="note">In the Edge Add-ons store, a promotional tile is an optional banner image (small: 440×280, large: 1400×560).
+    Microsoft uses it on the store home page, in collections and in search results when it features an extension —
+    it is the "poster" for your listing. You do not need one to publish, but listings with one look more finished,
+    and it is the only way to get featured. Below is a 440×280 draft: screenshot just this box at 100% browser zoom
+    (it is exactly 440×280 px).</p>
+  <div id="promo">
+    <span id="promo-mark"></span>
+    <div class="copy">
+      <div class="name">NIVRA</div>
+      <div class="tag">Read PDFs easy on the eyes.</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const tpl = document.getElementById('mark').innerHTML;
+  const put = (el, size) => {
+    el.innerHTML = tpl;
+    const s = el.querySelector('svg');
+    s.setAttribute('width', size); s.setAttribute('height', size);
+    // unique ids per instance so clip paths / ids never collide
+    const uid = Math.random().toString(36).slice(2, 7);
+    s.innerHTML = s.innerHTML.replace(/id="(L|R|body|N)"/g, `id="$1-${uid}"`)
+      .replace(/url\(#(L|R|body)\)/g, `url(#$1-${uid})`).replace(/href="#N"/g, `href="#N-${uid}"`);
+  };
+  put(document.getElementById('big'), 420);
+  document.querySelectorAll('[data-size]').forEach(e => put(e, +e.dataset.size));
+  put(document.getElementById('promo-mark'), 128);
+
+  // ---- export -------------------------------------------------------------
+  const markSvg = size => {
+    const holder = document.createElement('div'); put(holder, size);
+    const svg = holder.querySelector('svg');
+    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    // filters live in the page's hidden <svg>; inline copies so the export is self-contained
+    const defs = document.querySelector('body > svg defs').outerHTML;
+    svg.insertAdjacentHTML('afterbegin', defs);
+    return new XMLSerializer().serializeToString(svg);
+  };
+  const save = (blob, name) => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  document.getElementById('dl-svg').onclick = () =>
+    save(new Blob([markSvg(1024)], { type: 'image/svg+xml' }), 'nivra-logo.svg');
+  document.querySelectorAll('[data-png]').forEach(btn => btn.onclick = () => {
+    const size = +btn.dataset.png;
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = size;
+      const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+      g.drawImage(img, 0, 0, size, size);
+      c.toBlob(b => save(b, `nivra-${size}.png`));
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markSvg(size));
+  });
+</script>
+</body>
+</html>

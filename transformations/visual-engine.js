@@ -52,10 +52,25 @@ const FILTER_VAR = '--nivra-filter';
 let _mode       = 'smart-dark';
 let _brightness = 100;
 let _contrast   = 100;
+let _onChange   = null;
+
+function _notify() {
+  _onChange?.({ mode: _mode, brightness: _brightness, contrast: _contrast });
+}
+
+function _syncSliders() {
+  for (const [name, value] of [['brightness', _brightness], ['contrast', _contrast]]) {
+    const slider = document.getElementById(`${name}-slider`);
+    const label  = document.getElementById(`${name}-val`);
+    if (slider) { slider.value = value; _paintSlider(slider); }
+    if (label) label.textContent = value + '%';
+  }
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export function getCurrentMode() { return _mode; }
+export function getState() { return { mode: _mode, brightness: _brightness, contrast: _contrast }; }
 export function getAdjustments() { return { brightness: _brightness, contrast: _contrast }; }
 /** CSS filter for the pure-filter modes ('' for smart-dark / original). */
 export function getModeFilter(mode) { return CSS_FILTER[mode] || ''; }
@@ -72,9 +87,22 @@ function _paintSlider(el) {
  * Binds UI controls and applies the default mode (Smart Dark).
  * Must be called after DOMContentLoaded.
  */
-export function setupVisualEngine() {
+export function setupVisualEngine(initial = {}, onChange = null) {
+  _onChange = typeof onChange === 'function' ? onChange : null;
+  if (Number.isFinite(initial.brightness)) _brightness = initial.brightness;
+  if (Number.isFinite(initial.contrast))   _contrast   = initial.contrast;
   _bindUIControls();
-  _applyMode('smart-dark');
+  _syncSliders();
+  _applyMode(initial.mode || 'smart-dark');
+}
+
+/** Apply a mode + brightness/contrast together (profiles, restored settings). */
+export function applyState({ mode, brightness, contrast }) {
+  if (Number.isFinite(brightness)) _brightness = brightness;
+  if (Number.isFinite(contrast))   _contrast   = contrast;
+  _syncSliders();
+  _applyMode(mode || _mode);
+  _notify();
 }
 
 /**
@@ -144,7 +172,7 @@ function _bindUIControls() {
   _paintSlider(cSlider);
 
   modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => _applyMode(btn.dataset.mode, modeBtns));
+    btn.addEventListener('click', () => { _applyMode(btn.dataset.mode, modeBtns); _notify(); });
   });
 
   bSlider?.addEventListener('input', e => {
@@ -152,6 +180,7 @@ function _bindUIControls() {
     if (bVal) bVal.textContent = _brightness + '%';
     _paintSlider(e.target);
     _applyAdjustments();
+    _notify();
   });
 
   cSlider?.addEventListener('input', e => {
@@ -159,6 +188,7 @@ function _bindUIControls() {
     if (cVal) cVal.textContent = _contrast + '%';
     _paintSlider(e.target);
     _applyAdjustments();
+    _notify();
   });
 
   btnReset?.addEventListener('click', () => {
@@ -170,6 +200,7 @@ function _bindUIControls() {
     _paintSlider(bSlider);
     _paintSlider(cSlider);
     _applyMode('smart-dark', modeBtns);
+    _notify();
   });
 }
 

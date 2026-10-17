@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Nivra",
-  "version": "1.5.1",
+  "name": "__MSG_extName__",
+  "short_name": "Nivra",
+  "version": "1.6.0",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
+  "author": "Bhyresh BS",
   "minimum_chrome_version": "147",
-  "description": "Render PDFs locally and apply real-time visual transformations.",
+  "offline_enabled": true,
+  "incognito": "spanning",
   "permissions": [
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
@@ -37,12 +42,12 @@
       "48": "assets/icon48.png",
       "128": "assets/icon128.png"
     },
-    "default_title": "Nivra Settings"
+    "default_title": "Nivra"
   },
   "web_accessible_resources": [
     {
       "resources": [
-        "viewer/*"
+        "viewer/viewer.html"
       ],
       "matches": ["<all_urls>"]
     }

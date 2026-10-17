@@ -10,6 +10,8 @@
  *   - "Keyboard Shortcuts" — shows available shortcuts inline
  */
 
+import { putFile } from '../settings/handoff.js';
+
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const toggle       = document.getElementById('toggle-enabled');
 const statusCard   = document.getElementById('status-card');
@@ -159,6 +161,45 @@ async function _checkActiveTab() {
   }
 }
 
+// ─── Open a PDF from disk (choose or drag-and-drop) ──────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const dropText  = document.getElementById('drop-zone-text');
+
+async function _openLocalFile(file) {
+  if (!file) return;
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+    dropText.textContent = 'That is not a PDF file';
+    return;
+  }
+  dropText.textContent = 'Opening…';
+  try {
+    const key = await putFile(file);
+    await chrome.tabs.create({ url: chrome.runtime.getURL(VIEWER_PATH) + '?idb=' + key });
+    window.close();
+  } catch (err) {
+    console.error('[Nivra Popup] Could not open file:', err);
+    dropText.textContent = 'Could not open that file';
+  }
+}
+
+fileInput.addEventListener('change', () => _openLocalFile(fileInput.files[0]));
+dropZone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+});
+['dragenter', 'dragover'].forEach(type => dropZone.addEventListener(type, e => {
+  e.preventDefault();
+  dropZone.classList.add('is-over');
+}));
+['dragleave', 'drop'].forEach(type => dropZone.addEventListener(type, e => {
+  e.preventDefault();
+  dropZone.classList.remove('is-over');
+}));
+dropZone.addEventListener('drop', e => _openLocalFile(e.dataTransfer?.files?.[0]));
+// A drop that misses the zone must not navigate the popup to the file.
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => e.preventDefault());
+
 // ─── File URL Access ──────────────────────────────────────────────────────────
 btnFileAccess.addEventListener('click', () => {
   chrome.tabs.create({
@@ -183,6 +224,7 @@ btnShortcuts.addEventListener('click', () => {
     <div><kbd>Ctrl+F</kbd> Search in document</div>
     <div><kbd>Ctrl+B</kbd> Toggle sidebar</div>
     <div><kbd>Ctrl+P</kbd> Print</div>
+    <div><kbd>R</kbd> Rotate clockwise</div>
     <div><kbd>Ctrl+0</kbd> Reset zoom</div>
     <div><kbd>Ctrl++/−</kbd> Zoom in / out</div>
     <div><kbd>↑ / ↓</kbd> Previous / next page</div>

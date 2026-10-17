@@ -24,14 +24,15 @@ const STORAGE_KEY = 'nivraEnabled';
 
 // ─── Rule builder ─────────────────────────────────────────────────────────────
 function _buildRedirectRule() {
-  const extensionId = chrome.runtime.id;
+  // getURL gives the right scheme for the browser (chrome-extension:// or extension://).
+  const viewerUrl = chrome.runtime.getURL('viewer/viewer.html');
   return {
     id: RULE_ID,
     priority: 1,
     action: {
       type: "redirect",
       redirect: {
-        regexSubstitution: `chrome-extension://${extensionId}/viewer/viewer.html?file=\\0`
+        regexSubstitution: `${viewerUrl}?file=\\0`
       }
     },
     condition: {
