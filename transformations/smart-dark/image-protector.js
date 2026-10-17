@@ -20,10 +20,12 @@
  * transformation of anything else.
  *
  * ─── Geometry ────────────────────────────────────────────────────────────────
- * The overlay matches the main canvas's PHYSICAL pixels (canvas.width/height)
- * and, via the `.canvasWrapper canvas { width:100%; height:100% }` rule in
- * pdf_viewer.css, its CSS box automatically matches the page box at every
- * zoom level. Source blit coordinates come from:
+ * Each overlay is sized to the UNION BOUNDS of the image regions it carries —
+ * not to the whole page — and positioned with CSS percentages of the page box.
+ * A page with one small photo therefore costs a small canvas instead of a second
+ * page-sized bitmap (about 5 MB per page at 100% on a 1080p screen, double on
+ * HiDPI, and doubled again on zoomed pages that carry two layers). Source pixels
+ * are copied 1:1, so the placement is exact:
  *
  *   physical = css × dpr,   dpr = canvas.width / viewport.width
  *
@@ -80,20 +82,13 @@ export function updateImageOverlay(pageEl, mainCanvas, regions, viewport, counte
   const dprY = mainCanvas.height / viewport.height;
   if (!(dprX > 0) || !(dprY > 0)) return;
 
-  const overlay = document.createElement('canvas');
-  overlay.className = OVERLAY_CLASS;
-  overlay.width  = mainCanvas.width;
-  overlay.height = mainCanvas.height;
-  // CSS size: inset:0 + width/height:100% via stylesheet (.canvasWrapper canvas).
-  overlay.style.cssText = _overlayCss('top:0;left:0;width:100%;height:100%', counterFilter);
-
-  const ctx = overlay.getContext('2d');
-  if (!ctx) return;
-  if (!_paintRegions(ctx, mainCanvas, regions, 0, 0, dprX, dprY)) return;
+  // The main canvas fills the whole page box.
+  const overlay = _buildOverlay(mainCanvas, regions, 0, 0, dprX, dprY,
+    { x: 0, y: 0, w: 1, h: 1 }, OVERLAY_CLASS, counterFilter);
 
   // Inside .canvasWrapper, right after the main canvas → above the canvas,
   // below textLayer/annotationLayer, clipped by the wrapper's overflow:hidden.
-  wrapper.appendChild(overlay);
+  if (overlay) wrapper.appendChild(overlay);
 }
 
 /**
@@ -122,18 +117,9 @@ export function updateDetailOverlay(pageEl, detailCanvas, regions, viewport, cou
   const dprY = detailCanvas.height / (fh * viewport.height);
   if (!(dprX > 0) || !(dprY > 0)) return;
 
-  const overlay = document.createElement('canvas');
-  overlay.className = `${OVERLAY_CLASS} ${DETAIL_OVERLAY_CLASS}`;
-  overlay.width  = detailCanvas.width;
-  overlay.height = detailCanvas.height;
-  overlay.style.cssText = _overlayCss(
-    `left:${fx * 100}%;top:${fy * 100}%;width:${fw * 100}%;height:${fh * 100}%`, counterFilter);
-
-  const ctx = overlay.getContext('2d');
-  if (!ctx) return;
-  if (!_paintRegions(ctx, detailCanvas, regions, originX, originY, dprX, dprY)) return;
-
-  wrapper.appendChild(overlay);   // after the base overlay → paints above it
+  const overlay = _buildOverlay(detailCanvas, regions, originX, originY, dprX, dprY,
+    { x: fx, y: fy, w: fw, h: fh }, `${OVERLAY_CLASS} ${DETAIL_OVERLAY_CLASS}`, counterFilter);
+  if (overlay) wrapper.appendChild(overlay);   // after the base overlay → paints above it
 }
 
 /**
@@ -164,15 +150,21 @@ function _overlayCss(box, counterFilter) {
 }
 
 /**
- * Copy each image quad from `source` into `ctx` (same pixel size as source).
+ * Build one overlay canvas from `source`, sized to the union bounds of the image
+ * quads (clamped to the source) and positioned over the page with CSS percentages.
+ *
  * Quad points are CSS px in viewport space; (originX, originY) is where the
  * source canvas starts in that space and dprX/dprY are its pixels per CSS px.
- * The exact clip path removes the ghost edges a rounded bounding-box blit leaves.
+ * `box` is where the source canvas sits on the page, as fractions of the page box
+ * ({x:0,y:0,w:1,h:1} for the main canvas). Pixels are copied 1:1, and the exact
+ * clip path removes the ghost edges a rounded bounding-box blit leaves.
  *
- * @returns {boolean} whether anything was painted
+ * @returns {HTMLCanvasElement|null} null when no quad touches the source
  */
-function _paintRegions(ctx, source, regions, originX, originY, dprX, dprY) {
-  let painted = false;
+function _buildOverlay(source, regions, originX, originY, dprX, dprY, box, className, counterFilter) {
+  // 1. Which quads land inside the source, and the union of their pixel bounds.
+  const items = [];
+  let ux0 = Infinity, uy0 = Infinity, ux1 = -Infinity, uy1 = -Infinity;
   for (const { points } of regions) {
     if (!points?.length) continue;
 
@@ -190,19 +182,42 @@ function _paintRegions(ctx, source, regions, originX, originY, dprX, dprY) {
     const sy = Math.max(0, Math.floor(minY) - 1);
     const ex = Math.min(source.width, Math.ceil(maxX) + 1);
     const ey = Math.min(source.height, Math.ceil(maxY) + 1);
-    const sw = ex - sx;
-    const sh = ey - sy;
-    if (sw <= 0 || sh <= 0) continue;     // this quad is outside the source canvas
+    if (ex - sx <= 0 || ey - sy <= 0) continue;     // this quad is outside the source canvas
 
+    items.push({ quad, sx, sy, ex, ey });
+    ux0 = Math.min(ux0, sx);  uy0 = Math.min(uy0, sy);
+    ux1 = Math.max(ux1, ex);  uy1 = Math.max(uy1, ey);
+  }
+  if (!items.length) return null;
+
+  // 2. A canvas of exactly that size — everything outside it would be transparent anyway.
+  const w = ux1 - ux0, h = uy1 - uy0;
+  const overlay = document.createElement('canvas');
+  overlay.className = className;
+  overlay.width  = w;
+  overlay.height = h;
+  const ctx = overlay.getContext('2d');
+  if (!ctx) return null;
+
+  for (const { quad, sx, sy, ex, ey } of items) {
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(quad[0].x, quad[0].y);
-    for (let i = 1; i < quad.length; i += 1) ctx.lineTo(quad[i].x, quad[i].y);
+    ctx.moveTo(quad[0].x - ux0, quad[0].y - uy0);
+    for (let i = 1; i < quad.length; i += 1) ctx.lineTo(quad[i].x - ux0, quad[i].y - uy0);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(source, sx, sy, sw, sh, sx, sy, sw, sh);
+    ctx.drawImage(source, sx, sy, ex - sx, ey - sy, sx - ux0, sy - uy0, ex - sx, ey - sy);
     ctx.restore();
-    painted = true;
   }
-  return painted;
+
+  // 3. Put it back where those pixels came from: its offset and size, as
+  //    fractions of the page box.
+  const pct = v => `${v * 100}%`;
+  overlay.style.cssText = _overlayCss([
+    `left:${pct(box.x + (ux0 / source.width) * box.w)}`,
+    `top:${pct(box.y + (uy0 / source.height) * box.h)}`,
+    `width:${pct((w / source.width) * box.w)}`,
+    `height:${pct((h / source.height) * box.h)}`,
+  ].join(';'), counterFilter);
+  return overlay;
 }

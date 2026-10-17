@@ -160,6 +160,51 @@ function _fileNameFromUrl(url) {
   return name;
 }
 
+/**
+ * Address types the viewer will fetch a PDF from. The ?file= value is whatever
+ * the link said, so anything else (javascript:, data:, ftp:, chrome:, …) is
+ * refused rather than handed to PDF.js. Relative or malformed values do not
+ * parse as URLs and are refused too.
+ */
+const ALLOWED_PDF_SCHEMES = new Set(['http:', 'https:', 'file:', 'blob:']);
+
+function _isAllowedPdfUrl(url) {
+  try { return ALLOWED_PDF_SCHEMES.has(new URL(url).protocol); }
+  catch (_) { return false; }
+}
+
+/**
+ * Open the PDF. The request first carries the user's cookies/auth, so a PDF
+ * behind a login (intranet, webmail, course portals) loads instead of coming
+ * back as a login page or a 401/403. If that request fails at the NETWORK level
+ * it is repeated once without credentials.
+ *
+ * Why the retry: a credentialed request is rejected by CORS whenever the server
+ * answers with `Access-Control-Allow-Origin: *` — the norm for public PDFs and
+ * CDNs — and the browser reports nothing but "Failed to fetch". That happens
+ * whenever the extension lacks host access for the site (the user can restrict
+ * it to "on click" / specific sites) and when the viewer is used from an ordinary
+ * web page. Real answers — HTTP errors (401/403/404), an invalid PDF, a password
+ * prompt — are not network failures and are not retried.
+ */
+async function _openPdf(options) {
+  const attempt = withCredentials => {
+    const task = pdfjsLib.getDocument({ ...options, withCredentials });
+    return task.promise.catch(err => { task.destroy?.(); throw err; });
+  };
+  try {
+    return await attempt(true);
+  } catch (err) {
+    if (!_isNetworkFailure(err)) throw err;
+    return attempt(false);
+  }
+}
+
+function _isNetworkFailure(err) {
+  return err instanceof TypeError || err?.name === 'UnknownErrorException' ||
+         /Failed to fetch|NetworkError|Load failed/i.test(err?.message || '');
+}
+
 let _initialPage = 0;
 
 // ─── Initialise ───────────────────────────────────────────────────────────────
@@ -167,11 +212,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Visual engine (sets up UI and applies default Smart Dark)
   setupVisualEngine();
 
+  // The error overlay's retry button. Wired here, before anything can fail:
+  // an inline onclick="" attribute is blocked by the extension's CSP.
+  document.getElementById('btn-error-retry')?.addEventListener('click', () => location.reload());
+
   // 2. Resolve file URL
   const { url, fragment } = _resolveFileParam(window.location.search, window.location.hash);
   currentFileUrl = url;
   _initialPage = parseInt(new URLSearchParams(fragment).get('page'), 10) || 0;
   if (!currentFileUrl) { _showError('No PDF file specified.'); return; }
+  if (!_isAllowedPdfUrl(currentFileUrl)) {
+    // Fixed text on purpose: never echo the rejected address back into the page.
+    _showError('Nivra can only open PDFs from http, https, file or blob addresses.');
+    return;
+  }
 
   // 3. Set document title
   try {
@@ -307,7 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 7. Load PDF
   const pdfjsUrl = new URL('../pdfjs/', import.meta.url).href;
   try {
-    const task = pdfjsLib.getDocument({
+    pdfDoc = await _openPdf({
       url:                 currentFileUrl,
       standardFontDataUrl: pdfjsUrl + 'web/standard_fonts/',
       cMapUrl:             pdfjsUrl + 'web/cmaps/',
@@ -317,7 +371,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       wasmUrl:             pdfjsUrl + 'web/wasm/',
       iccUrl:              pdfjsUrl + 'web/iccs/',
     });
-    pdfDoc = await task.promise;
 
     // Tell visual engine which document is loaded (clears operator cache, etc.)
     veSetDocument(pdfDoc);
@@ -451,7 +504,8 @@ function _setupUI() {
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   window.addEventListener('keydown', e => {
     const active = document.activeElement;
-    const inInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA';
+    const inInput = active?.tagName === 'INPUT' || active?.tagName === 'TEXTAREA' ||
+      active?.tagName === 'SELECT' || active?.isContentEditable;
 
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
       e.preventDefault();
@@ -475,14 +529,29 @@ function _setupUI() {
     } else if (e.key === 'Escape') {
       _closePropertiesModal();
       _closeAll();
-    } else if (!inInput) {
-      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
-        document.getElementById('btn-page-next')?.click();
-      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-        document.getElementById('btn-page-prev')?.click();
+    } else if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !e.defaultPrevented) {
+      const next = e.key === 'ArrowDown' || e.key === 'PageDown';
+      const prev = e.key === 'ArrowUp'   || e.key === 'PageUp';
+      // Only while the viewer itself has focus: with focus on the thumbnail list
+      // or a toolbar control these keys keep their normal meaning.
+      if ((next || prev) && _viewerHasFocus(active)) {
+        // These keys step one page. Without preventDefault the browser ALSO
+        // scrolls the container by its own amount, so every press moved twice.
+        e.preventDefault();
+        document.getElementById(next ? 'btn-page-next' : 'btn-page-prev')?.click();
       }
     }
   });
+}
+
+/**
+ * Does the viewer itself have keyboard focus — the page / PDF scroll area, or
+ * nothing in particular — as opposed to a toolbar control, thumbnail or field?
+ */
+function _viewerHasFocus(active) {
+  const container = document.getElementById('viewerContainer');
+  return !active || active === document.body || active === document.documentElement ||
+         active === container || !!container?.contains(active);
 }
 
 // ─── Search helpers ───────────────────────────────────────────────────────────
@@ -624,7 +693,10 @@ async function _renderThumbnail(pageNumber, canvasWrap, itemEl) {
       if (itemEl) itemEl.dataset.rendered = 'true';
     } catch (err) {
       console.warn(`[Nivra] Failed to render thumbnail for page ${pageNumber}:`, err);
-      canvasWrap.innerHTML = '<div class="thumbnail-placeholder">Preview unavailable</div>';
+      const note = document.createElement('div');
+      note.className = 'thumbnail-placeholder';
+      note.textContent = 'Preview unavailable';
+      canvasWrap.replaceChildren(note);
     } finally {
       _thumbnailRenderPromises.delete(pageNumber);
     }

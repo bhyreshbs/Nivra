@@ -7,14 +7,15 @@
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
     "storage",
-    "activeTab",
-    "tabs"
+    "activeTab"
   ],
   "host_permissions": [
-    "*://*/*.pdf",
-    "*://*/*.PDF",
-    "file:///*/*.pdf",
-    "file:///*/*.PDF"
+    "*://*/*.pdf*",
+    "*://*/*.PDF*",
+    "*://*/*.Pdf*",
+    "file:///*/*.pdf*",
+    "file:///*/*.PDF*",
+    "file:///*/*.Pdf*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline';"
@@ -36,9 +37,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "viewer/*",
-        "pdfjs/*",
-        "transformations/*"
+        "viewer/*"
       ],
       "matches": ["<all_urls>"]
     }

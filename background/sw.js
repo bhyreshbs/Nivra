@@ -35,7 +35,15 @@ function _buildRedirectRule() {
       }
     },
     condition: {
-      regexFilter: "^(https?|file|ftp):\\/\\/.*\\.pdf(?:\\?.*)?(?:#.*)?$",
+      // A URL whose PATH ends in .pdf, optionally followed by a query string and/or
+      // a fragment. [^?#]* keeps ".pdf" out of the query: without it, a web page
+      // that merely wraps a PDF — viewer.html?file=report.pdf, docs viewers — also
+      // matched and was hijacked, and Nivra then tried to read that HTML as a PDF.
+      // http(s) and file only — Chrome no longer supports ftp.
+      regexFilter: "^(https?|file):\\/\\/[^?#]*\\.pdf(?:\\?[^#]*)?(?:#.*)?$",
+      // Rule matching is case-SENSITIVE unless told otherwise, so without this
+      // report.PDF / Report.Pdf were never redirected.
+      isUrlFilterCaseSensitive: false,
       resourceTypes: ["main_frame", "sub_frame"]
     }
   };
