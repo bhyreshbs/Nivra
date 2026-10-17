@@ -12,17 +12,19 @@ Read PDFs in Dark Mode, Invert, Grayscale or High Contrast. Local-first: your fi
 Nivra opens PDFs in a fast, local viewer that makes them easier on your eyes — without ever changing the original file.
 
 **Display modes**
-- Smart Dark — dark pages with photos, charts and diagrams kept in their real colors
+- Smart Dark — dark pages with photos, charts and diagrams kept in their real colors, on the page and in the thumbnails
 - Original, True Invert, Grayscale and High Contrast
 - Brightness and contrast sliders
 - One-click profiles: Reading, Night, Study, Focus, Original
-- "Remember for this site" to keep a look per website
+- "Remember for this site" (or for local files) to keep a look per website
+- Your last settings are restored every time
 
 **A complete viewer**
 - Page thumbnails and an outline (bookmarks) panel
-- Search, zoom, fit-to-page/width, two-page view, rotate
+- Search, zoom, fit-to-page/width (opens fit to page), two-page view, rotate
 - Document properties, print, and download a transformed copy
 - Open any local PDF by dropping it on the Nivra popup
+- A compact bottom bar that collapses out of the way
 - Keyboard shortcuts (Ctrl+F search, Ctrl+B sidebar, R rotate, Ctrl+P print)
 
 **Private by design**
@@ -44,5 +46,9 @@ To test: open any https://…/file.pdf link — it should open in Nivra. Toggle 
 ## Still needed from you (can't be generated)
 - Privacy policy URL: host `PRIVACY.md` (GitHub Pages, a gist, your site) and fill in the contact line first.
 - Store logo 300×300 PNG (`assets/Logo.png` can be resized) and 1–6 screenshots at 1280×800 (e.g. Smart Dark page, appearance panel, outline sidebar, popup).
-- Optional: small promo tile 440×280, YouTube demo link.
+- Optional: small promo tile 440×280 (draft at the bottom of `logo.html`), YouTube demo link.
 - Publisher account on Partner Center (free).
+
+Privacy policy URL: https://bhyreshbs.github.io/Nivra/privacy.html
+Website URL (optional): https://bhyresh.me
+Logo: `assets/nivra-300.png` (300×300). Rebuild the zip with `npm run build && npm run package` before uploading.

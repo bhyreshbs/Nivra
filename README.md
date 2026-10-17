@@ -2,10 +2,20 @@
 
 **Make documents easier on your eyes.**
 
-Nivra is a local-first Chrome extension that replaces the standard PDF viewing experience with a real-time visual transformation layer — Dark Mode, True Invert, Grayscale, High Contrast, Brightness, and Contrast — without ever modifying the original file.
+Nivra is a local-first browser extension (Microsoft Edge, Chrome and other Chromium browsers) that replaces the standard PDF viewing experience with a real-time visual transformation layer — Smart Dark, True Invert, Grayscale, High Contrast, Brightness, and Contrast — without ever modifying the original file.
 
 > Open. Transform. Read.
 > No upload. No conversion. No modification.
+
+**Highlights (v1.6)**
+
+- Smart Dark that keeps photos, charts and diagrams in their real colours (pages *and* sidebar thumbnails)
+- Profiles (Reading, Night, Study, Focus, Original) and a "Remember for this site" look per website
+- Settings that persist: mode, brightness, contrast, zoom, sidebar, two-page view, toolbar state
+- Page thumbnails, outline (bookmarks), search, zoom / fit page / fit width, two-page view, rotate, document properties
+- Print and download a transformed copy; open any local PDF by dropping it on the toolbar popup
+- A collapsible bottom bar whose button shows the active mode, with an animated letter-by-letter swap
+- Lighter visuals automatically on low-end hardware
 
 ---
 
@@ -107,14 +117,14 @@ Key implementation notes:
 
 | Layer | Choice |
 |---|---|
-| Extension platform | Manifest V3 (Chrome; Manifest V2 is fully deprecated) |
+| Extension platform | Manifest V3 (Edge / Chrome) |
 | PDF rendering | [PDF.js](https://github.com/mozilla/pdf.js) (Apache 2.0) |
 | Interception | `declarativeNetRequest` |
-| Visual transforms | Canvas 2D compositing + CSS filters |
-| Preferences storage | `chrome.storage.local` (no backend) |
-| UI | Vanilla JS/HTML/CSS or Preact (keep bundle small); Tailwind optional for the appearance panel |
-| Build | Vite or esbuild |
-| Marketing site | Static site (Cloudflare Pages / Vercel / Netlify / GitHub Pages) — separate from the extension runtime |
+| Visual transforms | CSS filters on each page's canvas layer + a photo-restoring overlay (Smart Dark) |
+| Preferences storage | `chrome.storage.local` (no backend); one-shot file hand-off via IndexedDB |
+| UI | Vanilla JS / HTML / CSS, Tailwind CLI for utility classes |
+| Build | `build.js` (copies PDF.js, fonts, decoders) + Tailwind CLI; `package.js` makes the store zip |
+| Tests | `node --test` (`npm test`) |
 
 No backend, database, or cloud infrastructure is required for core functionality — rendering happens on the user's machine.
 
@@ -123,44 +133,40 @@ No backend, database, or cloud infrastructure is required for core functionality
 ```
 nivra/
 ├── manifest.json
-├── background/          # MV3 service worker: PDF interception, routing
-├── viewer/               # Nivra's PDF viewer UI (viewer.html + controller)
-├── pdfjs/                # Vendored PDF.js build
-├── rendering/            # Page rendering orchestration (canvas + text layer)
-├── transformations/      # Visual engine: dark, invert, grayscale, contrast, smart-dark
-├── settings/             # Preferences, profiles, per-site settings (chrome.storage)
-├── export/                # (Phase 6) transformed-PDF export
-├── assets/               # Icons, static assets
-└── docs/                  # Architecture notes, ADRs
+├── _locales/en/          # Store name + description (messages.json)
+├── background/           # MV3 service worker: PDF interception (declarativeNetRequest)
+├── popup/                # Toolbar popup: on/off, open-a-PDF drop zone, shortcuts
+├── viewer/               # PDF viewer UI: viewer.html / viewer.js / glass.css / input.css
+├── pdfjs/                # PDF.js build, fonts, cmaps, WASM decoders (copied by build.js)
+├── transformations/      # Visual engine, Smart Dark (smart-dark/), print/export renderer
+├── settings/             # Preferences, profiles, per-site looks, popup→viewer file hand-off
+├── tests/                # node --test unit tests
+├── docs/                 # privacy.html (published with GitHub Pages)
+├── assets/               # Icons and logo
+├── logo.html             # Logo sheet + promo tile draft (not shipped)
+├── build.js / package.js # Build dependencies / create the store zip
+├── PRIVACY.md  STORE_LISTING.md  LICENSE
 ```
 
 ## Getting Started
 
-Local development requires no Chrome Web Store publication.
-
 ```bash
-git clone <this-repo>
-cd nivra
+git clone https://github.com/bhyreshbs/Nivra
+cd Nivra
 npm install
-npm run build        # bundles into /dist
+npm run build        # Tailwind CSS + copy PDF.js, fonts and decoders
+npm test             # unit tests
+npm run package      # creates dist/ and nivra-<version>.zip for the store
 ```
 
-Then load it into Chrome:
+Then load it:
 
-1. Go to `chrome://extensions`
-2. Enable **Developer mode** (top right)
+1. Go to `edge://extensions` (or `chrome://extensions`)
+2. Enable **Developer mode**
 3. Click **Load unpacked**
-4. Select the `dist/` (or project) folder
+4. Select the `dist/` folder (created by `npm run package`)
 
-To test local-file PDFs, also enable **"Allow access to file URLs"** on the extension's card in `chrome://extensions`.
-
-### First milestone (proof of concept)
-
-Before building the full viewer, prove the core loop end-to-end:
-
-> Open an online or local PDF → render it through Nivra via PDF.js → apply True Invert on canvas in real time.
-
-Once that's reliable, expand outward per the roadmap below.
+To open PDFs saved on your computer by double-clicking, also enable **"Allow access to file URLs"** on the extension's card. Without it you can still open a local PDF by dropping it on the Nivra popup.
 
 ## Development Roadmap
 
@@ -174,15 +180,14 @@ Once that's reliable, expand outward per the roadmap below.
 | **6 — Export** | Download transformed copy (Dark/Invert/Grayscale/High Contrast PDF); later, structure-preserving export |
 | **7 — Multi-Platform** | Google Docs, Google Slides, PowerPoint Web, EPUB, images, other web document viewers |
 
-V1 for initial shipping = Phases 1–3 (+ a minimal slice of 5 for usability). Everything past that is explicitly post-V1.
+**Status:** Phases 1–5 are done for PDF, plus the transformed-copy download from Phase 6. Structure-preserving export and Phase 7 (other document types) are not started.
 
 ## Visual Modes
 
 | Mode | Behavior |
 |---|---|
 | **Original** | No transformation (default fallback) |
-| **Smart Dark** *(flagship, Phase 4)* | Dark background / light text while preserving photos, charts, diagrams, logos |
-| **Dark Mode** | White→dark background, black→light text; simpler than Smart Dark, still content-aware where feasible |
+| **Smart Dark** *(flagship)* | Dark background / light text while preserving photos, charts, diagrams, logos |
 | **True Invert** | Literal `R'=255-R, G'=255-G, B'=255-B` inversion |
 | **Grayscale** | Full desaturation |
 | **High Contrast** | Maximizes text/background/border separation |
@@ -203,11 +208,15 @@ Smart Dark is a per-page, document-aware pipeline (`transformations/smart-dark/`
    (already dark — left untouched), `scanned` (one image covers ≥85% of the
    page with little text — inverted as a unit, no overlays).
 4. **Image classification**: photographic images (rich mid-tones/color) are
-   preserved via an overlay canvas inside `.canvasWrapper` carrying the exact
-   inverse filter chain (including brightness/contrast sliders), so
-   `F(F⁻¹(pixels)) ≈ original`. Document-like images (white-background
-   letterhead scans, watermarks) invert with the page instead of becoming
-   glaring white boxes.
+   preserved via an overlay canvas placed *after* `.canvasWrapper` (outside the
+   filter), holding the original pixels exactly — brightness/contrast never
+   reach them. Document-like images (white-background letterhead scans) invert
+   with the page instead of becoming glaring white boxes. An image with real
+   text or vector content drawn over it inverts with the page so that content
+   stays readable; diagonal text (watermarks such as "SAMPLE") and text that only
+   grazes the picture's edge do not count as content over it.
+   Sidebar thumbnails get the same treatment from the page's decision (or, for
+   pages not yet viewed, from the thumbnail's own pixels).
 5. **Layer safety**: the filter only ever touches `.canvasWrapper` — the text
    layer (selection/search), annotation layer (links/forms) and the Nivra UI
    are never transformed, and nothing is transformed twice.
@@ -220,7 +229,9 @@ Developer flags (never shown in production UI):
 - `localStorage['nivra.smartDark.preserveImages'] = 'false'` — disables image
   preservation (images invert with the page).
 
-Printing and "Download Original" default to the untransformed PDF so users don't accidentally waste ink printing a dark page.
+Print and "Download transformed PDF" use the current mode, brightness and contrast, rendered on your device. Switch to **Original** first for an ink-friendly printout.
+
+Performance: the invert is a CSS filter on a per-page compositor layer; Smart Dark reads one small downscaled snapshot per page. On machines with ≤4 cores or ≤4 GB RAM the viewer drops backdrop blur and ambient animations (`perf-lite`).
 
 ## Privacy
 

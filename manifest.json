@@ -6,6 +6,7 @@
   "default_locale": "en",
   "description": "__MSG_extDescription__",
   "author": "Bhyresh BS",
+  "homepage_url": "https://bhyresh.me",
   "minimum_chrome_version": "147",
   "offline_enabled": true,
   "incognito": "spanning",
