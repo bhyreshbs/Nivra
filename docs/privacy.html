@@ -48,6 +48,16 @@
 </table>
 
 <h2>Contact</h2>
-<p>Questions about this policy: <a href="mailto:support@bhyresh.me">support@bhyresh.me</a></p>
+<p>Questions about this policy: <code id="addr">support@bhyresh.me</code>
+  (<a href="mailto:support@bhyresh.me">open in your mail app</a> · <a href="#" id="copy">copy address</a>)</p>
+<script>
+  document.getElementById('copy').addEventListener('click', function (e) {
+    e.preventDefault();
+    var link = e.currentTarget, text = document.getElementById('addr').textContent;
+    var done = function () { link.textContent = 'copied!'; setTimeout(function () { link.textContent = 'copy address'; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+    else { var r = document.createRange(); r.selectNodeContents(document.getElementById('addr')); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  });
+</script>
 </body>
 </html>
