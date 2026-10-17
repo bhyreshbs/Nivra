@@ -1,11 +1,13 @@
 /**
  * Smart Dark Page Analyzer — pixel-level content classification
  * ─────────────────────────────────────────────────────────────────────────────
- * Complements operator-analyzer.js (structure) with a cheap pixel probe of the
- * rendered canvas (evidence). The probe is a single 64×64 downsampled draw of
- * the main canvas — one drawImage + one getImageData per analysis, cached per
- * page. It NEVER writes back to the displayed canvas, so rendering sharpness
- * is untouched.
+ * Complements operator-analyzer.js (structure) with cheap pixel evidence from the
+ * rendered canvas. The canvas is read ONCE per analysis: a downscaled snapshot
+ * (256 px wide, one drawImage + one getImageData). Page-level and per-image
+ * statistics are then computed from that CPU copy, so the cost no longer grows
+ * with the number of images on the page (it used to be one temporary canvas and
+ * one GPU readback per image). Nothing is ever written back to the displayed
+ * canvas, so rendering sharpness is untouched.
  *
  * Classifications
  * ───────────────
@@ -42,13 +44,24 @@ const DOC_LIKE_WHITE_FRACTION = 0.55;
 /** Image region: mean saturation below this → not vividly colored. */
 const DOC_LIKE_MAX_SATURATION = 0.18;
 
-/** Probe resolution (per page / per image region). */
-const PROBE_SIZE = 64;
+/** Width of the per-page pixel snapshot, in px (height follows the page's aspect). */
+const SNAPSHOT_WIDTH = 256;
 
-// pageNumber → Promise<PixelProbe>
-const _probeCache = new Map();
+/** Resolution the snapshot is box-averaged to for statistics (same as the old probes). */
+const PAGE_PROBE_SIZE   = 64;   // whole page
+const REGION_PROBE_SIZE = 24;   // one image
 
-export function clearProbeCache() { _probeCache.clear(); }
+/**
+ * Snapshots are only needed while a page is being (re)decided — a provisional
+ * decision is redone once its text layer arrives — so only a few are kept
+ * (256 px wide ≈ 0.3 MB each) instead of one per page for the whole document.
+ */
+const SNAPSHOT_CACHE_MAX = 6;
+
+// pageNumber → Snapshot, insertion-ordered so the oldest entry is evicted first
+const _snapshotCache = new Map();
+
+export function clearProbeCache() { _snapshotCache.clear(); }
 
 /**
  * @typedef {Object} RegionStats
@@ -60,33 +73,122 @@ export function clearProbeCache() { _probeCache.clear(); }
  */
 
 /**
- * Sample the whole rendered page canvas into a tiny probe bitmap.
- * Cached per page for the lifetime of the document.
+ * @typedef {Object} Snapshot
+ * @property {Uint8ClampedArray} data   — RGBA, width × height, on the CPU
+ * @property {number} width
+ * @property {number} height
+ * @property {number} srcWidth          — size, in canvas px, of the canvas it was taken from:
+ * @property {number} srcHeight           probeRegion() coordinates are in that space
+ */
+
+/**
+ * Take a downscaled CPU copy of a rendered canvas: ONE drawImage and ONE
+ * getImageData, regardless of how many regions are sampled from it later.
+ * Not cached — use snapshotPage() for the on-screen page.
  *
  * NOTE: requires the canvas to be fully rendered — call after `pagerendered`.
  *
- * @param {number}            pageNumber
  * @param {HTMLCanvasElement} canvas
- * @returns {ImageData|null} 64×64 RGBA probe
+ * @returns {Snapshot|null}  null for an empty or tainted canvas
  */
-export function probePage(pageNumber, canvas) {
-  if (_probeCache.has(pageNumber)) return _probeCache.get(pageNumber);
-  const probe = _sample(canvas, 0, 0, canvas.width, canvas.height, PROBE_SIZE);
-  _probeCache.set(pageNumber, probe);
-  return probe;
+export function takeSnapshot(canvas) {
+  try {
+    if (!canvas?.width || !canvas?.height) return null;
+    const width  = Math.min(SNAPSHOT_WIDTH, canvas.width);
+    const height = Math.max(1, Math.round(canvas.height * width / canvas.width));
+
+    const tmp = document.createElement('canvas');
+    tmp.width = width;
+    tmp.height = height;
+    const ctx = tmp.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';   // mip-mapped: a real area average for big reductions
+    ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, width, height);
+    const { data } = ctx.getImageData(0, 0, width, height);
+    tmp.width = tmp.height = 0;           // release the scratch bitmap
+    return { data, width, height, srcWidth: canvas.width, srcHeight: canvas.height };
+  } catch (_) {
+    return null;                          // tainted canvas or OOM — callers fall back safely
+  }
 }
 
 /**
- * Sample a sub-rect (physical pixel coords) of the main canvas.
- * NOT cached — cheap (small drawImage + getImageData).
+ * Snapshot of an on-screen page, kept for a short while. A cached snapshot is
+ * only reused for a canvas of the same pixel size (a zoom re-render changes it).
  *
+ * @param {number}            pageNumber
  * @param {HTMLCanvasElement} canvas
- * @param {number} sx  @param {number} sy  @param {number} sw  @param {number} sh
- * @param {number} size — probe resolution (square)
- * @returns {ImageData|null}
+ * @returns {Snapshot|null}
  */
-export function probeRegion(canvas, sx, sy, sw, sh, size = 24) {
-  return _sample(canvas, sx, sy, sw, sh, size);
+export function snapshotPage(pageNumber, canvas) {
+  const hit = _snapshotCache.get(pageNumber);
+  if (hit && hit.srcWidth === canvas?.width && hit.srcHeight === canvas?.height) return hit;
+
+  const snap = takeSnapshot(canvas);
+  _snapshotCache.delete(pageNumber);
+  if (snap) {
+    _snapshotCache.set(pageNumber, snap);
+    while (_snapshotCache.size > SNAPSHOT_CACHE_MAX) {
+      _snapshotCache.delete(_snapshotCache.keys().next().value);
+    }
+  }
+  return snap;
+}
+
+/**
+ * Whole-page probe: the snapshot box-averaged to 64×64.
+ *
+ * @param {number}            pageNumber
+ * @param {HTMLCanvasElement} canvas
+ * @returns {{data:Uint8ClampedArray,width:number,height:number}|null}
+ */
+export function probePage(pageNumber, canvas) {
+  const snap = snapshotPage(pageNumber, canvas);
+  return snap ? probeRegion(snap, 0, 0, snap.srcWidth, snap.srcHeight, PAGE_PROBE_SIZE) : null;
+}
+
+/**
+ * Sample a sub-rect of a snapshot — pure CPU, no canvas, no GPU readback.
+ * The rect is in the snapshot's SOURCE canvas pixels; the region is box-averaged
+ * to size × size, which is what the old per-image canvas probe produced.
+ *
+ * @param {Snapshot|null} snap
+ * @param {number} sx  @param {number} sy  @param {number} sw  @param {number} sh
+ * @param {number} [size] — probe resolution (square)
+ * @returns {{data:Uint8ClampedArray,width:number,height:number}|null}
+ */
+export function probeRegion(snap, sx, sy, sw, sh, size = REGION_PROBE_SIZE) {
+  if (!snap || !(sw > 0) || !(sh > 0)) return null;
+
+  const fx = snap.width  / snap.srcWidth;
+  const fy = snap.height / snap.srcHeight;
+  const clamp = (v, max) => Math.max(0, Math.min(max, v));
+  const x0 = clamp(sx * fx, snap.width),        y0 = clamp(sy * fy, snap.height);
+  const x1 = clamp((sx + sw) * fx, snap.width), y1 = clamp((sy + sh) * fy, snap.height);
+  const rw = x1 - x0, rh = y1 - y0;
+  if (rw < 2 || rh < 2) return null;      // too few pixels to say anything
+
+  const src = snap.data, W = snap.width, H = snap.height;
+  const out = new Uint8ClampedArray(size * size * 4);
+  for (let j = 0; j < size; j++) {
+    const ya = Math.min(H - 1, Math.floor(y0 + (j * rh) / size));
+    const yb = Math.min(H, Math.max(ya + 1, Math.ceil(y0 + ((j + 1) * rh) / size)));
+    for (let i = 0; i < size; i++) {
+      const xa = Math.min(W - 1, Math.floor(x0 + (i * rw) / size));
+      const xb = Math.min(W, Math.max(xa + 1, Math.ceil(x0 + ((i + 1) * rw) / size)));
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let y = ya; y < yb; y++) {
+        for (let x = xa; x < xb; x++) {
+          const k = (y * W + x) * 4;
+          r += src[k]; g += src[k + 1]; b += src[k + 2]; n++;
+        }
+      }
+      const o = (j * size + i) * 4;
+      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+    }
+  }
+  return { data: out, width: size, height: size };
 }
 
 /**
@@ -215,27 +317,4 @@ export function classifyImageWithOverlap(stats, overlap) {
   }
 
   return classifyImage(stats);
-}
-
-// ─── Internal ────────────────────────────────────────────────────────────────
-
-function _sample(canvas, sx, sy, sw, sh, size) {
-  try {
-    if (!canvas || !canvas.width || sw <= 0 || sh <= 0) return null;
-    // Clamp source rect to canvas bounds
-    const x = Math.max(0, Math.min(sx, canvas.width));
-    const y = Math.max(0, Math.min(sy, canvas.height));
-    const w = Math.max(0, Math.min(sw, canvas.width  - x));
-    const h = Math.max(0, Math.min(sh, canvas.height - y));
-    if (w < 2 || h < 2) return null;
-
-    const probe = document.createElement('canvas');
-    probe.width = probe.height = size;
-    const ctx = probe.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return null;
-    ctx.drawImage(canvas, x, y, w, h, 0, 0, size, size);
-    return ctx.getImageData(0, 0, size, size);
-  } catch (_) {
-    return null;   // tainted canvas or OOM — caller falls back safely
-  }
 }

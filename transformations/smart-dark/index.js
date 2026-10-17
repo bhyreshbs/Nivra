@@ -40,7 +40,7 @@ import {
   getPageAnalysis, imageOpsToRects, imageOpsToQuads, rectOpsToRects, clearOpListCache,
 } from './operator-analyzer.js';
 import {
-  probePage, probeRegion, regionStats, classifyPage, classifyImageWithOverlap, clearProbeCache,
+  probePage, snapshotPage, takeSnapshot, probeRegion, regionStats, classifyPage, classifyImageWithOverlap, clearProbeCache,
 } from './page-analyzer.js';
 import { updateImageOverlay, updateDetailOverlay, removeImageOverlay, removeAllImageOverlays } from './image-protector.js';
 import { buildSmartDarkFilter, buildCounterFilter } from './fallback.js';
@@ -76,6 +76,14 @@ const _rerun = new Map();
 // compares it before/after each await to learn that a newer render (zoom) has
 // made the viewport and canvas it started with stale.
 const _renderEpoch = new Map();
+
+/**
+ * Most DISTINCT images analysed per page (largest first); any further image is
+ * inverted with the page. Every draw of one image (tiles, a repeated logo) is
+ * one image, not hundreds — classified once, one shared verdict — so this only
+ * bites on pages like contact sheets with dozens of different pictures.
+ */
+const MAX_ANALYSED_IMAGES = 200;
 
 // pageNumber → physical width of the canvas that _pageViewports' viewport was
 // rendered into. Viewport and canvas only describe the same render while this
@@ -258,7 +266,7 @@ export async function getExportDecision(pdfPage, canvas, viewport) {
     coverage = Math.max(coverage, (r.width * r.height) / pageArea);
   }
   const pageClass = classifyPage({
-    pageStats: regionStats(probeRegion(canvas, 0, 0, canvas.width, canvas.height, 64)),
+    pageStats: regionStats(probeRegion(takeSnapshot(canvas), 0, 0, canvas.width, canvas.height, 64)),
     textOps: analysis.textOps,
     imageCoverage: coverage,
     bgFills: analysis.bgFills,
@@ -361,10 +369,6 @@ async function _processPageAsync(pageNumber, viewport, pageEl, canvas) {
     if (!_canvasMatchesViewport(pageNumber, liveCanvas)) return;
     _updateOverlayForPage(pageNumber, pageEl, liveCanvas, decision, vp);
 
-    if (decision.needsTextRetry) {
-      _scheduleTextRetry(pageNumber, pageEl, liveCanvas, vp);
-    }
-
     DebugOverlay.renderDebugOverlay(pageEl, vp, {
       pageClass:      decision.pageClass,
       protectedRects: imageOpsToRects(decision.photographicOps, vp),
@@ -460,20 +464,43 @@ function _decide(pdfPage, analysis, viewport, canvas, pageEl) {
         needsTextRetry: true,
       };
     }
+    // Group every draw of the same image so its pixels are judged once, not once
+    // per tile. The key is the image's own id: PDF.js merges consecutive draws
+    // into one repeat op only sometimes, so the operator index alone would count
+    // a logo drawn 400 times as 400 images. Inline images have no id → own group.
+    const groups = new Map();   // image key → { members: [{ op, r }], largest: rect }
     imageOps.forEach((op, idx) => {
       const r = rects[idx];
       if (!r) { invertedOps.push(op); return; }
       // Skip page-covering images: that is a scan/photo background, not an
       // embedded picture — protecting it would defeat the dark mode.
       if ((r.width * r.height) / pageArea >= 0.85) { invertedOps.push(op); return; }
-      const stats = regionStats(probeRegion(
-        canvas,
-        r.x * dprX, r.y * dprY, r.width * dprX, r.height * dprY,
-      ));
-      const overlap = _measureContentOverlap(r, op.opIndex, textRects, vectorRects);
-      (classifyImageWithOverlap(stats, overlap) === 'photographic'
-        ? photographicOps
-        : invertedOps).push(op);
+      const key = op.imageId ?? `op#${op.opIndex}`;
+      let g = groups.get(key);
+      if (!g) groups.set(key, g = { members: [], largest: r });
+      g.members.push({ op, r });
+      if (r.width * r.height > g.largest.width * g.largest.height) g.largest = r;
+    });
+
+    // The page is read ONCE (a downscaled CPU copy); every image is judged from
+    // it. No per-image canvas, no per-image GPU readback.
+    const snapshot = groups.size ? snapshotPage(pdfPage.pageNumber, canvas) : null;
+
+    const area = r => r.width * r.height;
+    const ranked = [...groups.values()].sort((a, b) => area(b.largest) - area(a.largest));
+    ranked.forEach((g, rank) => {
+      if (rank >= MAX_ANALYSED_IMAGES) {            // beyond the cap: invert with the page
+        g.members.forEach(m => invertedOps.push(m.op));
+        return;
+      }
+      const L = g.largest;
+      const stats = regionStats(probeRegion(snapshot, L.x * dprX, L.y * dprY, L.width * dprX, L.height * dprY));
+      g.members.forEach(({ op, r }) => {
+        const overlap = _measureContentOverlap(r, op.opIndex, textRects, vectorRects);
+        (classifyImageWithOverlap(stats, overlap) === 'photographic'
+          ? photographicOps
+          : invertedOps).push(op);
+      });
     });
   } else {
     invertedOps.push(...imageOps);

@@ -175,8 +175,7 @@ function _bindUIControls() {
 
 function _applyMode(mode, cards) {
   const wrapper = document.getElementById('viewerWrapper');
-  const viewer = document.getElementById('viewer');
-  if (!wrapper || !viewer) return;
+  if (!wrapper) return;
 
   const prev = _mode;
   _mode = mode;
@@ -220,8 +219,7 @@ function _applyAdjustments() {
 
 function _flushAdjustments() {
   const wrapper = document.getElementById('viewerWrapper');
-  const viewer = document.getElementById('viewer');
-  if (!wrapper || !viewer) return;
+  if (!wrapper) return;
 
   if (_mode === 'smart-dark') {
     SmartDark.updateAdjustments(wrapper, _brightness, _contrast);

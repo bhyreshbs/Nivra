@@ -96,8 +96,11 @@ export function clearOpListCache() { _cache.clear(); }
 
 /**
  * @typedef {Object} PageAnalysis
- * @property {Array<{ctm:number[], opIndex:number}>} imageOps
- *          — image paints with their CTM and operator-list index
+ * @property {Array<{ctm:number[], opIndex:number, imageId?:string}>} imageOps
+ *          — image paints with their CTM and operator-list index. imageId is
+ *          PDF.js's object id of the image (the same XObject drawn many times
+ *          shares it, whether or not PDF.js merged the draws into one repeat op);
+ *          undefined for inline images.
  * @property {number} textOps                  — showText op count
  * @property {number} vectorOps                — path/stroke/fill op count
  * @property {Array<{rect:number[], opIndex:number}>} vectorPaints
@@ -301,6 +304,8 @@ function _analyzeOps(ops) {
       }
 
       case OPS_PAINT_IMAGE_XOBJECT:
+        if (!annotationDepth) imageOps.push({ ctm: ctm.slice(), opIndex: i, imageId: _imageId(argsArray[i]) });
+        break;
       case OPS_PAINT_INLINE_IMAGE:
         if (!annotationDepth) imageOps.push({ ctm: ctm.slice(), opIndex: i });
         break;
@@ -325,6 +330,7 @@ function _analyzeOps(ops) {
             imageOps.push({
               ctm: _matMul(ctm, [sx, 0, 0, sy, positions[p], positions[p + 1]]),
               opIndex: i,
+              imageId: _imageId(a),
             });
           }
         }
@@ -367,6 +373,11 @@ function _analyzeOps(ops) {
   }
 
   return { imageOps, textOps, vectorOps, vectorPaints, bgFills };
+}
+
+/** PDF.js object id of a paintImageXObject / paintImageXObjectRepeat op ([objId, …]). */
+function _imageId(args) {
+  return typeof args?.[0] === 'string' ? args[0] : undefined;
 }
 
 /** "#rrggbb" → [r, g, b] in 0..1, or null when the value is not a hex colour. */
