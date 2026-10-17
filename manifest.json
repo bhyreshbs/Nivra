@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Nivra",
   "version": "1.5.1",
+  "minimum_chrome_version": "147",
   "description": "Render PDFs locally and apply real-time visual transformations.",
   "permissions": [
     "declarativeNetRequest",
@@ -18,20 +19,24 @@
     "file:///*/*.Pdf*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline';"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self';"
   },
   "background": {
     "service_worker": "background/sw.js",
     "type": "module"
   },
   "icons": {
-    "16": "assets/Logo.png",
-    "48": "assets/Logo.png",
-    "128": "assets/Logo.png"
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_icon": "assets/Logo.png",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    },
     "default_title": "Nivra Settings"
   },
   "web_accessible_resources": [

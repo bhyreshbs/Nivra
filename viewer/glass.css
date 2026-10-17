@@ -1,3 +1,228 @@
+/* ── Layout rules that used to be an inline <style> in viewer.html ───────────────────────────
+   Moved here (in the same place in the cascade) so the extension's CSP no longer needs
+   style-src 'unsafe-inline'. Everything below is the theme proper. ─────────────────────── */
+    /* Inline critical overrides that depend on runtime values */
+    body { background:#606066; color:#E6EDF3; }
+    
+    /* Mode-card active state, previews and all glass styling live in glass.css */
+
+    /* Mode preview strips */
+    .preview-smart { background: linear-gradient(to right, #141414 40%, #E5E7EB 40%); }
+    .preview-original { background: linear-gradient(to right, #fff 40%, #111 40%); }
+    .preview-invert { background: linear-gradient(to right, #111 40%, #E76F00 40%); }
+    .preview-gray { background: linear-gradient(to right, #888 40%, #ccc 40%); }
+    .preview-contrast { background: linear-gradient(to right, #000 40%, #fff 40%); }
+
+    /* Bottom toolbar */
+    #bottom-toolbar {
+        background: rgba(22,24,29,0.96);
+        border: 1px solid rgba(91, 94, 102, 0.55);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    /* Hover states for dark UI */
+    .toolbar-btn:hover { background: rgba(48,54,61,0.8) !important; color: #E6EDF3 !important; }
+    .icon-action:hover { background: rgba(48,54,61,0.8) !important; }
+
+    /* Popover dark style */
+    .popover-panel {
+        background: #1C2128;
+        border: 1px solid #30363D;
+        box-shadow: var(--shadow-panel, 0 8px 24px rgba(0,0,0,0.4));
+    }
+
+    #view-size-control {
+        position: relative;
+    }
+    #btn-view-size {
+        min-width: 82px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: rgba(31,35,41,0.92);
+        border: 1px solid rgba(48,54,61,0.62);
+        color: #E6EDF3;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    #btn-view-size:hover {
+        background: rgba(38,42,49,0.96);
+        border-color: rgba(96,165,250,0.22);
+    }
+    #view-size-label {
+        white-space: nowrap;
+    }
+    #view-size-popover {
+        width: 112px;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translate(-50%, 8px) scale(0.98);
+        border-radius: 14px;
+        overflow: hidden;
+        background: rgba(22,24,29,0.98);
+        border: 1px solid rgba(91, 94, 102, 0.55);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+    #view-size-popover.active {
+        transform: translate(-50%, 0) scale(1);
+    }
+    .view-size-option {
+        width: 100%;
+        min-height: 32px;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        background: transparent;
+        color: #E6EDF3;
+        font-size: 13px;
+        text-align: left;
+        transition: background-color 0.16s ease, color 0.16s ease;
+    }
+    .view-size-option:hover {
+        background: rgba(48,54,61,0.78);
+    }
+    .view-size-option.is-active {
+        background: rgba(59,130,246,0.18);
+        color: #BFDBFE;
+    }
+    #side-toolbar-shell {
+        position: absolute;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        z-index: 35;
+        pointer-events: none;
+    }
+    #side-toolbar-shell > * {
+        pointer-events: auto;
+    }
+    #side-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px 8px;
+        border-radius: 18px;
+        background: rgba(22, 24, 29, 0.96);
+        border: 1px solid rgba(91, 94, 102, 0.55);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    }
+    #side-toolbar .toolbar-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+    }
+    #side-toolbar-shell .popover {
+        top: 50%;
+        right: calc(100% + 14px);
+        transform: translate(8px, -50%) scale(0.98);
+    }
+    #side-toolbar-shell .popover.active {
+        transform: translate(0, -50%) scale(1);
+    }
+    #search-overlay {
+        width: 320px;
+        border-radius: 16px;
+    }
+    #properties-modal[hidden] {
+        display: none !important;
+    }
+    #properties-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(7, 9, 12, 0.62);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+    #properties-dialog {
+        width: min(620px, calc(100vw - 48px));
+        max-height: calc(100vh - 48px);
+        overflow: auto;
+        border-radius: 18px;
+        background: #181a1f;
+        border: 1px solid rgba(91, 94, 102, 0.55);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
+    }
+    #properties-dialog::-webkit-scrollbar {
+        width: 10px;
+    }
+    #properties-dialog::-webkit-scrollbar-thumb {
+        background: rgba(96, 96, 102, 0.55);
+        border-radius: 999px;
+    }
+    .properties-row {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr);
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(96, 96, 102, 0.24);
+    }
+    .properties-row:last-child {
+        border-bottom: none;
+    }
+    .properties-label {
+        color: #A6ACB5;
+        font-size: 13px;
+    }
+    .properties-value {
+        color: #E6EDF3;
+        font-size: 13px;
+        line-height: 1.45;
+        word-break: break-word;
+        text-align: left;
+    }
+    #btn-close-properties {
+        min-width: 88px;
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 10px;
+        background: rgba(38, 42, 49, 0.96);
+        border: 1px solid rgba(91, 94, 102, 0.48);
+        color: #E6EDF3;
+        transition: background-color 0.18s ease, border-color 0.18s ease;
+    }
+    #btn-close-properties:hover {
+        background: rgba(52, 57, 66, 0.96);
+        border-color: rgba(126, 132, 142, 0.5);
+    }
+    @media (max-width: 900px) {
+        #side-toolbar-shell {
+            top: auto;
+            bottom: 108px;
+            right: 16px;
+            transform: none;
+        }
+        #side-toolbar-shell .popover {
+            top: auto;
+            bottom: 0;
+            right: calc(100% + 12px);
+            transform: translateX(8px) scale(0.98);
+        }
+        #side-toolbar-shell .popover.active {
+            transform: translateX(0) scale(1);
+        }
+        .properties-row {
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+    }
+
+/* ── Classes that replace former style="" attributes ─────────────────────────────────────── */
+.nv-scheme-dark      { color-scheme: dark; }                                   /* native number-input colours */
+.nv-popover-header   { border-bottom: 1px solid rgba(255,255,255,0.08); }
+.nv-popover-section  { border-top: 1px solid rgba(255,255,255,0.08); }
+.nv-popover-footer   { border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); }
+.nv-chip             { background: rgba(255,255,255,0.08); }
+
 /* =============================================================================
    Nivra — Monochrome Glass UI
    -----------------------------------------------------------------------------
@@ -359,8 +584,6 @@ button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
 
 /* 5g. Appearance panel */
 #appearance-popover > div { border-color: rgba(255,255,255,0.08) !important; }
-#appearance-popover [style*="rgba(13,17,23"] { background: rgba(0,0,0,0.25) !important; }
-#appearance-popover > div:first-child [style*="rgba(59,130,246"] { background: rgba(255,255,255,0.08) !important; }
 
 .mode-card {
   position: relative;

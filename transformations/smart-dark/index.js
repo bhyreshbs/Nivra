@@ -24,7 +24,7 @@
  *    scanned  → full-page scan: invert as a unit, no overlays
  *   ↓
  *  Image classification per detected image:
- *    photographic   → preserved via counter-filtered overlay canvas
+ *    photographic   → preserved via an unfiltered overlay canvas (original pixels)
  *    document-like  → (letterhead scans, watermarks) invert with the page
  *   ↓
  *  Final: dark page, light crisp text, real photos preserved, no white boxes
@@ -43,7 +43,7 @@ import {
   probePage, snapshotPage, takeSnapshot, probeRegion, regionStats, classifyPage, classifyImageWithOverlap, clearProbeCache,
 } from './page-analyzer.js';
 import { updateImageOverlay, updateDetailOverlay, removeImageOverlay, removeAllImageOverlays } from './image-protector.js';
-import { buildSmartDarkFilter, buildCounterFilter } from './fallback.js';
+import { buildSmartDarkFilter } from './fallback.js';
 import * as DebugOverlay from './debug-overlay.js';
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -51,9 +51,8 @@ let _pdfDoc     = null;
 let _isActive   = false;
 let _wrapperEl  = null;   // #viewerWrapper — carries the filter custom properties
 
-/** Read by `.canvasWrapper { filter: var(--nivra-filter) }` and the overlay (input.css / image-protector.js). */
+/** Read by `.canvasWrapper { filter: var(--nivra-filter) }` and the thumbnails (input.css). */
 const FILTER_VAR  = '--nivra-filter';
-const COUNTER_VAR = '--nivra-counter-filter';
 let _brightness = 100;
 let _contrast   = 100;
 let _preserveImages = _loadPreserveSetting();
@@ -157,7 +156,6 @@ export function deactivate(_wrapper) {
   _isActive = false;
   _rerun.clear();
   _wrapperEl?.style.removeProperty(FILTER_VAR);
-  _wrapperEl?.style.removeProperty(COUNTER_VAR);
   document.querySelectorAll('.pdfViewer .page').forEach(pageEl => {
     _clearPageFilter(pageEl);
     removeImageOverlay(pageEl);
@@ -223,8 +221,7 @@ export function onDetailRendered(pageNumber, pageEl, detailCanvas) {
   if (!decision || !vp || decision.pageClass !== 'normal' || !decision.photographicOps.length) return;
   if (!_canvasMatchesViewport(pageNumber, _getCanvas(pageEl))) return;   // a newer page render is under way
 
-  updateDetailOverlay(pageEl, detailCanvas, imageOpsToQuads(decision.photographicOps, vp), vp,
-                      buildCounterFilter(_brightness, _contrast));
+  updateDetailOverlay(pageEl, detailCanvas, imageOpsToQuads(decision.photographicOps, vp), vp);
 }
 
 /**
@@ -285,8 +282,7 @@ export async function getExportDecision(pdfPage, canvas, viewport) {
  */
 function _publishFilters() {
   if (!_wrapperEl) return;
-  _wrapperEl.style.setProperty(FILTER_VAR,  buildSmartDarkFilter(_brightness, _contrast));
-  _wrapperEl.style.setProperty(COUNTER_VAR, buildCounterFilter(_brightness, _contrast));
+  _wrapperEl.style.setProperty(FILTER_VAR, buildSmartDarkFilter(_brightness, _contrast));
 }
 
 /**
@@ -294,11 +290,20 @@ function _publishFilters() {
  * `.nivra-smart-dark-skip .canvasWrapper { filter: none }` does the rest.
  */
 function _applyPageFilter(pageEl, pageClass) {
-  pageEl.classList.toggle('nivra-smart-dark-skip', pageClass === 'dark-bg');
+  const dark = pageClass === 'dark-bg';
+  pageEl.classList.toggle('nivra-smart-dark-skip', dark);
+  // The sidebar thumbnail of the same page follows the same decision.
+  _thumbnailOf(pageEl)?.classList.toggle('nivra-smart-dark-skip', dark);
 }
 
 function _clearPageFilter(pageEl) {
   pageEl.classList.remove('nivra-smart-dark-skip');
+  _thumbnailOf(pageEl)?.classList.remove('nivra-smart-dark-skip');
+}
+
+function _thumbnailOf(pageEl) {
+  const n = pageEl.dataset?.pageNumber;
+  return n ? document.querySelector(`.thumbnail-item[data-page-number="${n}"]`) : null;
 }
 
 /**
@@ -525,13 +530,12 @@ function _updateOverlayForPage(pageNumber, pageEl, canvas, decision, viewport = 
   }
 
   const regions = imageOpsToQuads(decision.photographicOps, vp);
-  const counter = buildCounterFilter(_brightness, _contrast);
-  updateImageOverlay(pageEl, canvas, regions, vp, counter);
+  updateImageOverlay(pageEl, canvas, regions, vp);
 
   // Zoomed-in page: PDF.js also has a full-resolution detail canvas on top of
   // the (lower-resolution) main one. Restore photos there at full resolution too.
   const detail = _getDetailCanvas(pageEl);
-  if (detail) updateDetailOverlay(pageEl, detail, regions, vp, counter);
+  if (detail) updateDetailOverlay(pageEl, detail, regions, vp);
 }
 
 /**

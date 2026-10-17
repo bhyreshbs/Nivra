@@ -1,8 +1,8 @@
 {
   "name": "nivra",
-  "version": "1.0.0",
-  "description": "**Make documents easier on your eyes.**",
-  "main": "index.js",
+  "version": "1.5.1",
+  "description": "Make documents easier on your eyes — a local-first Chrome extension that renders PDFs with real-time dark, invert, grayscale and contrast modes.",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npx @tailwindcss/cli -i ./viewer/input.css -o ./viewer/viewer.css && node build.js"

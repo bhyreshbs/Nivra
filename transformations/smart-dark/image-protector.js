@@ -7,17 +7,19 @@
  *
  * ─── How it works ────────────────────────────────────────────────────────────
  * Smart Dark applies its filter to the page's `.canvasWrapper` (per page —
- * never to the whole viewer). The overlay canvas lives INSIDE the same
- * `.canvasWrapper`, directly above the main canvas, and carries the exact
- * inverse filter chain:
+ * never to the whole viewer). The overlay is a SIBLING of that wrapper, placed
+ * right after it inside `.page`: above the filtered canvas, below the text and
+ * annotation layers, and OUTSIDE the filter:
  *
- *   overlay pixels:  F_wrapper( F_overlay( original_pixels ) )
- *                  = F( F⁻¹(pixels) ) ≈ original            → preserved image
- *   elsewhere:       F_wrapper( PDF_canvas_pixels )          → Smart Dark
+ *   overlay pixels:  original_pixels                          → preserved image, exact
+ *   elsewhere:       F_wrapper( PDF_canvas_pixels )           → Smart Dark
  *
- * Because the overlay only contains blitted image regions (transparent
- * elsewhere), exactly the image pixels are counter-transformed — no double
- * transformation of anything else.
+ * An earlier design kept the overlay inside the filtered wrapper and gave it the
+ * inverse filter chain so that F(F⁻¹(pixels)) ≈ pixels. That is only an
+ * approximation — every filter step clamps — so saturated photos came back
+ * slightly off (≈83% of their pixels differed). Outside the filter nothing has to
+ * be undone, so the copied pixels are shown untouched, and brightness/contrast
+ * never reach them.
  *
  * ─── Geometry ────────────────────────────────────────────────────────────────
  * Each overlay is sized to the UNION BOUNDS of the image regions it carries —
@@ -56,8 +58,7 @@ export const DETAIL_OVERLAY_CLASS = 'nivra-detail-overlay';
  *   detail overlay — copied from the detail canvas; same position and size as it,
  *                    so photos in view are restored at full resolution
  *
- * Both carry the counter filter. The detail overlay is later in the DOM, so it
- * paints above the base one.
+ * The detail overlay is later in the DOM, so it paints above the base one.
  */
 
 /**
@@ -68,9 +69,8 @@ export const DETAIL_OVERLAY_CLASS = 'nivra-detail-overlay';
  * @param {Array<{points:Array<{x:number,y:number}>,bounds:{x:number,y:number,width:number,height:number}}>} regions
  *                                          — exact image quads in CSS px (viewport space)
  * @param {PageViewport}      viewport      — viewport used for this render
- * @param {string}            counterFilter — exact inverse of the wrapper filter
  */
-export function updateImageOverlay(pageEl, mainCanvas, regions, viewport, counterFilter) {
+export function updateImageOverlay(pageEl, mainCanvas, regions, viewport) {
   removeImageOverlay(pageEl);   // removes the detail overlay too: it is rebuilt by the caller
 
   const wrapper = pageEl?.querySelector('.canvasWrapper');
@@ -84,11 +84,11 @@ export function updateImageOverlay(pageEl, mainCanvas, regions, viewport, counte
 
   // The main canvas fills the whole page box.
   const overlay = _buildOverlay(mainCanvas, regions, 0, 0, dprX, dprY,
-    { x: 0, y: 0, w: 1, h: 1 }, OVERLAY_CLASS, counterFilter);
+    { x: 0, y: 0, w: 1, h: 1 }, OVERLAY_CLASS);
 
-  // Inside .canvasWrapper, right after the main canvas → above the canvas,
-  // below textLayer/annotationLayer, clipped by the wrapper's overflow:hidden.
-  if (overlay) wrapper.appendChild(overlay);
+  // Right after .canvasWrapper inside .page: above the filtered canvas, below the
+  // text/annotation layers (later siblings), and not itself filtered.
+  if (overlay) wrapper.after(overlay);
 }
 
 /**
@@ -96,7 +96,7 @@ export function updateImageOverlay(pageEl, mainCanvas, regions, viewport, counte
  * Same arguments as updateImageOverlay, with the detail canvas as the source.
  * Replaces any previous detail overlay; leaves the base overlay alone.
  */
-export function updateDetailOverlay(pageEl, detailCanvas, regions, viewport, counterFilter) {
+export function updateDetailOverlay(pageEl, detailCanvas, regions, viewport) {
   pageEl?.querySelector(`.${DETAIL_OVERLAY_CLASS}`)?.remove();
 
   const wrapper = pageEl?.querySelector('.canvasWrapper');
@@ -118,8 +118,12 @@ export function updateDetailOverlay(pageEl, detailCanvas, regions, viewport, cou
   if (!(dprX > 0) || !(dprY > 0)) return;
 
   const overlay = _buildOverlay(detailCanvas, regions, originX, originY, dprX, dprY,
-    { x: fx, y: fy, w: fw, h: fh }, `${OVERLAY_CLASS} ${DETAIL_OVERLAY_CLASS}`, counterFilter);
-  if (overlay) wrapper.appendChild(overlay);   // after the base overlay → paints above it
+    { x: fx, y: fy, w: fw, h: fh }, `${OVERLAY_CLASS} ${DETAIL_OVERLAY_CLASS}`);
+  if (overlay) {
+    // After the base overlay (or, lacking one, after the wrapper) → paints above it.
+    const overlays = pageEl.querySelectorAll(`.${OVERLAY_CLASS}`);
+    (overlays[overlays.length - 1] ?? wrapper).after(overlay);
+  }
 }
 
 /**
@@ -138,15 +142,10 @@ export function removeAllImageOverlays() {
 
 // ─── Internal ────────────────────────────────────────────────────────────────
 
-function _overlayCss(box, counterFilter) {
-  return [
-    'position:absolute',
-    box,
-    'pointer-events:none',
-    // Follows brightness/contrast live via the variable Smart Dark publishes on
-    // #viewerWrapper; the literal is only a fallback for the first paint.
-    `filter:var(--nivra-counter-filter, ${counterFilter})`,
-  ].join(';');
+function _overlayCss(box) {
+  // No filter on purpose: the overlay is outside the filtered wrapper and must show
+  // the copied pixels exactly as rendered (see the header comment).
+  return ['position:absolute', box, 'pointer-events:none'].join(';');
 }
 
 /**
@@ -161,7 +160,7 @@ function _overlayCss(box, counterFilter) {
  *
  * @returns {HTMLCanvasElement|null} null when no quad touches the source
  */
-function _buildOverlay(source, regions, originX, originY, dprX, dprY, box, className, counterFilter) {
+function _buildOverlay(source, regions, originX, originY, dprX, dprY, box, className) {
   // 1. Which quads land inside the source, and the union of their pixel bounds.
   const items = [];
   let ux0 = Infinity, uy0 = Infinity, ux1 = -Infinity, uy1 = -Infinity;
@@ -218,6 +217,6 @@ function _buildOverlay(source, regions, originX, originY, dprX, dprY, box, class
     `top:${pct(box.y + (uy0 / source.height) * box.h)}`,
     `width:${pct((w / source.width) * box.w)}`,
     `height:${pct((h / source.height) * box.h)}`,
-  ].join(';'), counterFilter);
+  ].join(';'));
   return overlay;
 }

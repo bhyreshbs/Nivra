@@ -9,7 +9,7 @@
  *   true-invert   → page filter: invert(100%)
  *   grayscale     → page filter: grayscale(100%)
  *   high-contrast → page filter: contrast/brightness/saturate
- *   original      → no filter
+ *   original      → no filter of its own (brightness/contrast still apply)
  *
  * ─── How filters reach the page ──────────────────────────────────────────────
  * Every mode publishes ONE CSS custom property, --nivra-filter, on
@@ -193,12 +193,11 @@ function _applyMode(mode, cards) {
   if (mode === 'smart-dark') {
     wrapper.classList.add('mode-smart-dark');   // page background CSS hook
     SmartDark.activate(wrapper, _brightness, _contrast);
-  } else if (mode === 'original') {
-    // Nothing to apply — already cleared above
   } else {
-    // Pure-filter modes: applied to each page's canvas layer by CSS, so the
-    // text layer, annotations and the Nivra UI are never transformed.
-    wrapper.style.setProperty(FILTER_VAR, _composeFilter(mode));
+    // Every other mode — Original included — is the mode's own filter (none, for
+    // Original) plus the brightness/contrast sliders. Applied to each page's canvas
+    // layer by CSS, so the text layer, annotations and the Nivra UI are never transformed.
+    _publishPageFilter(wrapper, mode);
   }
 
   // 4. Update card UI
@@ -223,9 +222,16 @@ function _flushAdjustments() {
 
   if (_mode === 'smart-dark') {
     SmartDark.updateAdjustments(wrapper, _brightness, _contrast);
-  } else if (_mode !== 'original') {
-    wrapper.style.setProperty(FILTER_VAR, _composeFilter(_mode));
+  } else {
+    _publishPageFilter(wrapper, _mode);
   }
+}
+
+/** Publish the mode's filter + sliders as --nivra-filter; nothing to apply removes it. */
+function _publishPageFilter(wrapper, mode) {
+  const value = _composeFilter(mode);
+  if (value) wrapper.style.setProperty(FILTER_VAR, value);
+  else wrapper.style.removeProperty(FILTER_VAR);
 }
 
 /** Mode filter followed by the user's brightness / contrast. */

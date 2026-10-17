@@ -363,6 +363,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     pdfDoc = await _openPdf({
       url:                 currentFileUrl,
+      // Defence in depth: the extension CSP already forbids eval; this also stops
+      // PDF.js from even trying the eval-based font fast path (and logging the block).
+      isEvalSupported:     false,
       standardFontDataUrl: pdfjsUrl + 'web/standard_fonts/',
       cMapUrl:             pdfjsUrl + 'web/cmaps/',
       cMapPacked:          true,
@@ -690,6 +693,12 @@ async function _renderThumbnail(pageNumber, canvasWrap, itemEl) {
         transform: renderTransform,
       }).promise;
 
+      // Release the page's parsed operator list and decoded resources now that the
+      // thumbnail is drawn. Without this every thumbnail kept its page's data alive
+      // for the life of the document, so memory grew with each page scrolled past.
+      // (PDF.js skips the cleanup while a main-view render of the page is running.)
+      page.cleanup();
+
       if (itemEl) itemEl.dataset.rendered = 'true';
     } catch (err) {
       console.warn(`[Nivra] Failed to render thumbnail for page ${pageNumber}:`, err);
@@ -824,11 +833,8 @@ async function _resolveFileSize(meta, downloadInfo) {
     return _formatBytes(contentLength);
   }
 
-  try {
-    const bytes = await pdfDoc.getData();
-    if (bytes?.length) return _formatBytes(bytes.length);
-  } catch (_) {}
-
+  // Unknown: say so. The old fallback called pdfDoc.getData(), which makes PDF.js
+  // pull the whole file (every range it had not fetched yet) just to read a length.
   return '—';
 }
 
@@ -1020,11 +1026,12 @@ async function _printDocument() {
 
   const toast = _showToast('Preparing pages for print…');
   const urls = [];
-  let container = null, style = null;
+  let container = null, sheet = null;
   const cleanup = () => {
-    container?.remove(); style?.remove();
+    container?.remove();
+    if (sheet) document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== sheet);
     urls.splice(0).forEach(u => URL.revokeObjectURL(u));
-    container = style = null;
+    container = sheet = null;
     toast.hide();
     _printing = false;
   };
@@ -1067,9 +1074,11 @@ async function _printDocument() {
       return img;
     });
 
-    style = document.createElement('style');
-    style.textContent = rules;
-    document.head.appendChild(style);
+    // A constructable stylesheet, not a <style> element: an inserted <style> would need
+    // style-src 'unsafe-inline' in the extension CSP, a constructed sheet does not.
+    sheet = new CSSStyleSheet();
+    sheet.replaceSync(rules);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
     document.body.appendChild(container);
 
     // The print preview must not be taken before every bitmap is decoded.

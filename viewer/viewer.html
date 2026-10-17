@@ -8,223 +8,7 @@
     <link rel="stylesheet" href="fonts/inter/index.css">
     <link rel="stylesheet" href="viewer.css">
 
-    <style>
-    /* Inline critical overrides that depend on runtime values */
-    body { background:#606066; color:#E6EDF3; }
-    
-    /* Mode-card active state, previews and all glass styling live in glass.css */
-
-    /* Mode preview strips */
-    .preview-smart { background: linear-gradient(to right, #141414 40%, #E5E7EB 40%); }
-    .preview-original { background: linear-gradient(to right, #fff 40%, #111 40%); }
-    .preview-invert { background: linear-gradient(to right, #111 40%, #E76F00 40%); }
-    .preview-gray { background: linear-gradient(to right, #888 40%, #ccc 40%); }
-    .preview-contrast { background: linear-gradient(to right, #000 40%, #fff 40%); }
-
-    /* Bottom toolbar */
-    #bottom-toolbar {
-        background: rgba(22,24,29,0.96);
-        border: 1px solid rgba(91, 94, 102, 0.55);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-    }
-
-    /* Hover states for dark UI */
-    .toolbar-btn:hover { background: rgba(48,54,61,0.8) !important; color: #E6EDF3 !important; }
-    .icon-action:hover { background: rgba(48,54,61,0.8) !important; }
-
-    /* Popover dark style */
-    .popover-panel {
-        background: #1C2128;
-        border: 1px solid #30363D;
-        box-shadow: var(--shadow-panel, 0 8px 24px rgba(0,0,0,0.4));
-    }
-
-    #view-size-control {
-        position: relative;
-    }
-    #btn-view-size {
-        min-width: 82px;
-        height: 34px;
-        padding: 0 12px;
-        border-radius: 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        background: rgba(31,35,41,0.92);
-        border: 1px solid rgba(48,54,61,0.62);
-        color: #E6EDF3;
-        font-size: 13px;
-        font-weight: 500;
-    }
-    #btn-view-size:hover {
-        background: rgba(38,42,49,0.96);
-        border-color: rgba(96,165,250,0.22);
-    }
-    #view-size-label {
-        white-space: nowrap;
-    }
-    #view-size-popover {
-        width: 112px;
-        bottom: calc(100% + 10px);
-        left: 50%;
-        transform: translate(-50%, 8px) scale(0.98);
-        border-radius: 14px;
-        overflow: hidden;
-        background: rgba(22,24,29,0.98);
-        border: 1px solid rgba(91, 94, 102, 0.55);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-    }
-    #view-size-popover.active {
-        transform: translate(-50%, 0) scale(1);
-    }
-    .view-size-option {
-        width: 100%;
-        min-height: 32px;
-        padding: 7px 10px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        background: transparent;
-        color: #E6EDF3;
-        font-size: 13px;
-        text-align: left;
-        transition: background-color 0.16s ease, color 0.16s ease;
-    }
-    .view-size-option:hover {
-        background: rgba(48,54,61,0.78);
-    }
-    .view-size-option.is-active {
-        background: rgba(59,130,246,0.18);
-        color: #BFDBFE;
-    }
-    #side-toolbar-shell {
-        position: absolute;
-        top: 50%;
-        right: 20px;
-        transform: translateY(-50%);
-        z-index: 35;
-        pointer-events: none;
-    }
-    #side-toolbar-shell > * {
-        pointer-events: auto;
-    }
-    #side-toolbar {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 10px 8px;
-        border-radius: 18px;
-        background: rgba(22, 24, 29, 0.96);
-        border: 1px solid rgba(91, 94, 102, 0.55);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-    }
-    #side-toolbar .toolbar-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-    }
-    #side-toolbar-shell .popover {
-        top: 50%;
-        right: calc(100% + 14px);
-        transform: translate(8px, -50%) scale(0.98);
-    }
-    #side-toolbar-shell .popover.active {
-        transform: translate(0, -50%) scale(1);
-    }
-    #search-overlay {
-        width: 320px;
-        border-radius: 16px;
-    }
-    #properties-modal[hidden] {
-        display: none !important;
-    }
-    #properties-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 70;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        background: rgba(7, 9, 12, 0.62);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-    }
-    #properties-dialog {
-        width: min(620px, calc(100vw - 48px));
-        max-height: calc(100vh - 48px);
-        overflow: auto;
-        border-radius: 18px;
-        background: #181a1f;
-        border: 1px solid rgba(91, 94, 102, 0.55);
-        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
-    }
-    #properties-dialog::-webkit-scrollbar {
-        width: 10px;
-    }
-    #properties-dialog::-webkit-scrollbar-thumb {
-        background: rgba(96, 96, 102, 0.55);
-        border-radius: 999px;
-    }
-    .properties-row {
-        display: grid;
-        grid-template-columns: 170px minmax(0, 1fr);
-        gap: 16px;
-        padding: 12px 0;
-        border-bottom: 1px solid rgba(96, 96, 102, 0.24);
-    }
-    .properties-row:last-child {
-        border-bottom: none;
-    }
-    .properties-label {
-        color: #A6ACB5;
-        font-size: 13px;
-    }
-    .properties-value {
-        color: #E6EDF3;
-        font-size: 13px;
-        line-height: 1.45;
-        word-break: break-word;
-        text-align: left;
-    }
-    #btn-close-properties {
-        min-width: 88px;
-        height: 36px;
-        padding: 0 14px;
-        border-radius: 10px;
-        background: rgba(38, 42, 49, 0.96);
-        border: 1px solid rgba(91, 94, 102, 0.48);
-        color: #E6EDF3;
-        transition: background-color 0.18s ease, border-color 0.18s ease;
-    }
-    #btn-close-properties:hover {
-        background: rgba(52, 57, 66, 0.96);
-        border-color: rgba(126, 132, 142, 0.5);
-    }
-    @media (max-width: 900px) {
-        #side-toolbar-shell {
-            top: auto;
-            bottom: 108px;
-            right: 16px;
-            transform: none;
-        }
-        #side-toolbar-shell .popover {
-            top: auto;
-            bottom: 0;
-            right: calc(100% + 12px);
-            transform: translateX(8px) scale(0.98);
-        }
-        #side-toolbar-shell .popover.active {
-            transform: translateX(0) scale(1);
-        }
-        .properties-row {
-            grid-template-columns: 1fr;
-            gap: 6px;
-        }
-    }
-    </style>
-    <!-- Monochrome glass theme: must stay AFTER the inline <style> above -->
+    <!-- Theme and layout rules. No inline styles anywhere: the extension CSP does not allow them. -->
     <link rel="stylesheet" href="glass.css">
 </head>
 
@@ -424,7 +208,7 @@
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
             </button>
             <div class="flex items-center text-sm font-medium text-ui-text mx-1">
-                <input type="number" id="page-number-input" value="1" min="1" class="w-7 text-center bg-transparent border-b border-ui-border focus:border-nivra-accent focus:outline-none transition-colors text-ui-text text-sm" style="color-scheme:dark">
+                <input type="number" id="page-number-input" value="1" min="1" class="w-7 text-center bg-transparent border-b border-ui-border focus:border-nivra-accent focus:outline-none transition-colors text-ui-text text-sm nv-scheme-dark">
                 <span class="text-ui-textMuted ml-1 text-xs">/ <span id="page-count-display">--</span></span>
             </div>
             <button id="btn-page-next" class="icon-action w-7 h-7 rounded-lg flex items-center justify-center text-ui-textMuted transition-colors" title="Next Page">
@@ -444,13 +228,12 @@
             <!-- =============================================
                  APPEARANCE POPOVER — Premium Redesign
                  ============================================= -->
-            <div id="appearance-popover" class="popover absolute bottom-12 right-0 mb-3 w-[340px] rounded-2xl z-50 overflow-hidden"
-                 style="background: linear-gradient(145deg, #1C2128 0%, #161B22 100%); border: 1px solid #30363D; box-shadow: 0 0 0 1px rgba(59,130,246,0.1), 0 24px 48px rgba(0,0,0,0.5);">
+            <div id="appearance-popover" class="popover absolute bottom-12 right-0 mb-3 w-[340px] rounded-2xl z-50 overflow-hidden">
 
                 <!-- Header -->
-                <div class="px-5 py-4 flex items-center justify-between" style="border-bottom: 1px solid rgba(48,54,61,0.8);">
+                <div class="px-5 py-4 flex items-center justify-between nv-popover-header">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(59,130,246,0.15);">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center nv-chip">
                             <svg class="text-nivra-accent" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                         </div>
                         <div>
@@ -470,9 +253,9 @@
                     <div class="grid grid-cols-2 gap-2" id="mode-grid">
 
                         <!-- Smart Dark -->
-                        <button class="mode-card active rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="smart-dark" style="background: rgba(22,27,34,0.8);">
+                        <button class="mode-card active rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="smart-dark">
                             <div class="flex items-center gap-2 mb-2.5">
-                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(59,130,246,0.12);">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                                 </div>
                             </div>
@@ -481,9 +264,9 @@
                         </button>
 
                         <!-- Original -->
-                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="original" style="background: rgba(22,27,34,0.8);">
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="original">
                             <div class="flex items-center gap-2 mb-2.5">
-                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 </div>
                             </div>
@@ -492,9 +275,9 @@
                         </button>
 
                         <!-- True Invert -->
-                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="true-invert" style="background: rgba(22,27,34,0.8);">
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="true-invert">
                             <div class="flex items-center gap-2 mb-2.5">
-                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(239,68,68,0.1);">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 18a6 6 0 0 0 0-12v12z"/></svg>
                                 </div>
                             </div>
@@ -503,9 +286,9 @@
                         </button>
 
                         <!-- Grayscale -->
-                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="grayscale" style="background: rgba(22,27,34,0.8);">
+                        <button class="mode-card rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="grayscale">
                             <div class="flex items-center gap-2 mb-2.5">
-                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center" style="background: rgba(125,133,144,0.12);">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20V2z"/></svg>
                                 </div>
                             </div>
@@ -514,9 +297,9 @@
                         </button>
 
                         <!-- High Contrast (full width) -->
-                        <button class="mode-card col-span-2 rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="high-contrast" style="background: rgba(22,27,34,0.8);">
+                        <button class="mode-card col-span-2 rounded-xl p-3 border border-ui-border transition-all text-left group" data-mode="high-contrast">
                             <div class="flex items-center gap-3">
-                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background: rgba(255,255,255,0.06);">
+                                <div class="mode-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M12 2v20"/></svg>
                                 </div>
                                 <div class="text-left">
@@ -529,7 +312,7 @@
                 </div>
 
                 <!-- Adjustments -->
-                <div class="px-4 pb-4" style="border-top: 1px solid rgba(48,54,61,0.5);">
+                <div class="px-4 pb-4 nv-popover-section">
                     <div class="text-[10px] font-semibold tracking-widest text-ui-textSubtle uppercase mb-3 pt-4 px-0.5">Adjustments</div>
 
                     <div class="space-y-4">
@@ -551,7 +334,7 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="px-4 py-3 flex justify-between items-center" style="border-top: 1px solid rgba(48,54,61,0.5); background: rgba(13,17,23,0.4);">
+                <div class="px-4 py-3 flex justify-between items-center nv-popover-footer">
                     <button id="btn-reset-appearance" class="text-xs font-medium text-ui-textMuted hover:text-ui-text transition-colors">↺ Reset</button>
                     <div class="text-[10px] text-ui-textSubtle">Nivra Visual Engine v1</div>
                 </div>
@@ -562,13 +345,13 @@
     <!-- ================================================
          ERROR OVERLAY
          ================================================ -->
-    <div id="error-log" class="absolute inset-0 z-50 flex-col items-center justify-center hidden" style="background: #606066;">
+    <div id="error-log" class="absolute inset-0 z-50 flex-col items-center justify-center hidden">
         <div class="text-red-400 mb-5">
             <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         </div>
         <h2 class="text-lg font-semibold text-ui-text mb-2">Could not render PDF</h2>
         <p id="error-message" class="text-ui-textMuted mb-6 max-w-md text-center text-sm leading-relaxed"></p>
-        <button id="btn-error-retry" type="button" class="px-5 py-2 rounded-lg text-sm font-medium transition-colors text-white hover:opacity-90" style="background: #21262D; border: 1px solid #30363D;">
+        <button id="btn-error-retry" type="button" class="px-5 py-2 rounded-lg text-sm font-medium transition-colors text-white hover:opacity-90">
             Try Again
         </button>
     </div>

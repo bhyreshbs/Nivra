@@ -142,7 +142,10 @@ function _createPanel() {
   panel.style.cssText = 'position:fixed;bottom:90px;right:12px;z-index:100000;' +
     'background:#111;color:#eee;font:11px monospace;padding:8px 10px;' +
     'border:1px solid #444;border-radius:8px;display:flex;flex-direction:column;gap:4px;';
-  panel.innerHTML = '<strong style="color:#7fffb0">Smart Dark Debug</strong>';
+  const title = document.createElement('strong');      // built with the DOM: a style="" attribute in
+  title.textContent = 'Smart Dark Debug';              // markup would be blocked by the extension CSP
+  title.style.color = '#7fffb0';
+  panel.appendChild(title);
   for (const key of Object.keys(_toggles)) {
     const label = document.createElement('label');
     label.style.cssText = 'display:flex;gap:6px;align-items:center;cursor:pointer;';

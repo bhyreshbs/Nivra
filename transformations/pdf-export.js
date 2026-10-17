@@ -102,11 +102,6 @@ export async function renderPagesForOutput(pdfDoc, {
 // ─── Painting ─────────────────────────────────────────────────────────────────
 
 async function _paint(ctx, src, page, viewport, mode, brightness, contrast) {
-  if (mode === 'original') {
-    ctx.drawImage(src, 0, 0);
-    return;
-  }
-
   if (mode === 'smart-dark') {
     const { pageClass, quads } = await getExportDecision(page, src, viewport);
     if (pageClass === 'dark-bg') {            // on screen these pages are left alone

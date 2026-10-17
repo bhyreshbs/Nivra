@@ -366,13 +366,15 @@
   }
 
   /*
-   * Smart Dark rendering pipeline:
-   *   .canvasWrapper  ← Smart Dark per-page filter                    [applied in JS]
-   *   .page canvas    ← PDF.js high-resolution render (UNTOUCHED)
-   *   .nivra-image-overlay ← counter-filter overlay that restores image regions
-   *   .textLayer      ← text selection (z-index:2, not affected by our overlay)
+   * Smart Dark rendering pipeline (children of .page, bottom to top):
+   *   .canvasWrapper       ← the per-page filter (--nivra-filter, see below); holds
+   *                          the PDF.js canvas, which is never modified
+   *   .nivra-image-overlay ← sibling AFTER the wrapper, therefore NOT filtered: the
+   *                          original pixels of preserved photos, drawn exactly
+   *   .textLayer / annotations ← later siblings, never filtered
    *
-   * No canvas pixel loops. No getImageData/putImageData. No resolution loss.
+   * The page canvas is only ever read (one downscaled snapshot per page); no pixel
+   * is written back, so there is no resolution loss.
    */
 
   /* Image-protection overlay canvas (created by image-protector.js) */
@@ -381,7 +383,11 @@
     top: 0;
     left: 0;
     pointer-events: none;
-    z-index: 1;       /* above canvas (0), below textLayer (2) */
+    /* A sibling of .canvasWrapper inside .page. The wrapper is not positioned, so any
+       positioned overlay paints above it; .textLayer is z-index:0 and comes LATER in
+       the DOM, so at the same z-index it paints above the overlay (search and
+       selection highlights must not be covered). */
+    z-index: 0;
     display: block;
   }
 
@@ -401,6 +407,14 @@
   }
   /* Pages that are already dark opt out (set by smart-dark/index.js). */
   .pdfViewer .page.nivra-smart-dark-skip .canvasWrapper {
+    filter: none;
+  }
+  /* Sidebar thumbnails get the same mode filter (and the same already-dark opt-out)
+     as the pages they preview. */
+  .thumbnail-canvas-wrap canvas {
+    filter: var(--nivra-filter, none);
+  }
+  .thumbnail-item.nivra-smart-dark-skip .thumbnail-canvas-wrap canvas {
     filter: none;
   }
 
