@@ -319,8 +319,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (_sitePinned) setSiteAppearance(_siteHost, state);
     else savePrefs(state);
     _highlightProfile(state);
+    _onModeLabel(state.mode);
   });
   _highlightProfile(startLook);
+  _initAppearanceLabel(startLook.mode);
   _setupSitePref();
 
   // 3. Set document title
@@ -1248,6 +1250,76 @@ function _showToast(text) {
     update: t => { el.textContent = t; },
     hide: () => { el.classList.remove('is-visible'); setTimeout(() => el.remove(), 400); },
   };
+}
+
+// ─── Appearance button label ──────────────────────────────────────────────────
+// The button says "Appearance" when the viewer opens, then that word flies out and
+// the current display mode (Smart Dark, Original, …) flies in. Later mode changes
+// swap the word the same way. Each word is a row of per-letter spans animated in CSS.
+const APPEARANCE_WORD = 'Appearance';
+let _labelText = '';
+let _labelMode = null;
+
+function _labelWord(text, cls) {
+  const word = document.createElement('span');
+  word.className = `al-word ${cls}`;
+  [...text].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.className = 'al-ch';
+    s.textContent = ch;
+    s.style.setProperty('--i', i);
+    word.append(s);
+  });
+  return word;
+}
+
+function _swapAppearanceLabel(text) {
+  const box = document.getElementById('appearance-label');
+  const btn = document.getElementById('btn-appearance');
+  if (!box || text === _labelText) return;
+  const first = !_labelText;
+  _labelText = text;
+
+  box.querySelectorAll('.al-word:not(.is-out)').forEach(old => {
+    old.classList.remove('is-in');
+    old.classList.add('is-out');
+    setTimeout(() => old.remove(), 900);
+  });
+
+  const word = _labelWord(text, 'is-in');
+  box.append(word);
+  box.style.width = `${word.offsetWidth}px`;     // the button glides to the new word's width
+
+  if (!first) {
+    box.classList.remove('is-changing');
+    void box.offsetWidth;                        // restart the underline sweep
+    box.classList.add('is-changing');
+    btn?.classList.remove('is-changing');
+    void btn?.offsetWidth;
+    btn?.classList.add('is-changing');
+  }
+}
+
+/** Show "Appearance" first, then the active mode's name. */
+function _initAppearanceLabel(mode) {
+  _labelMode = mode;
+  _swapAppearanceLabel(APPEARANCE_WORD);
+  setTimeout(() => {
+    _swapAppearanceLabel(MODE_LABELS[_labelMode] || APPEARANCE_WORD);
+    _syncAppearanceAria();
+  }, 1900);
+}
+
+function _onModeLabel(mode) {
+  if (mode === _labelMode) return;
+  _labelMode = mode;
+  _swapAppearanceLabel(MODE_LABELS[mode] || APPEARANCE_WORD);
+  _syncAppearanceAria();
+}
+
+function _syncAppearanceAria() {
+  document.getElementById('btn-appearance')
+    ?.setAttribute('aria-label', `Appearance: ${MODE_LABELS[_labelMode] || ''}`.trim());
 }
 
 // ─── Outline (bookmarks) ──────────────────────────────────────────────────────

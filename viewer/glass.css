@@ -790,6 +790,78 @@ button:focus-visible, input:focus-visible, .view-size-option:focus-visible {
   #nivra-wordmark::after { display: none; }
 }
 
+/* ── Appearance button: "Appearance" → current mode, letter by letter ──────── */
+#appearance-label {
+  position: relative;
+  display: inline-grid;
+  height: 1.3em;
+  line-height: 1.3;
+  white-space: nowrap;
+  perspective: 420px;
+  transition: width 0.6s var(--nv-ease);
+}
+.al-word { grid-area: 1 / 1; display: inline-flex; }
+.al-ch {
+  display: inline-block;
+  white-space: pre;
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+/* in: each letter drops up from below, un-blurs and flares white as it lands */
+.al-word.is-in .al-ch {
+  animation: al-in 0.8s var(--nv-spring) both;
+  animation-delay: calc(var(--i) * 42ms + 140ms);
+}
+/* out: letters tip back, rise and dissolve, left to right */
+.al-word.is-out .al-ch {
+  animation: al-out 0.5s cubic-bezier(0.55, 0, 0.9, 0.45) both;
+  animation-delay: calc(var(--i) * 24ms);
+}
+@keyframes al-in {
+  0%   { opacity: 0; transform: translateY(85%) rotateX(-80deg) scale(0.6); filter: blur(7px);
+         text-shadow: 0 0 16px rgba(255,255,255,0.95); }
+  55%  { opacity: 1; filter: blur(0); text-shadow: 0 0 12px rgba(255,255,255,0.85); }
+  100% { opacity: 1; transform: none; filter: none; text-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+@keyframes al-out {
+  0%   { opacity: 1; transform: none; filter: none; }
+  100% { opacity: 0; transform: translateY(-90%) rotateX(85deg) scale(0.6); filter: blur(6px); }
+}
+/* a hairline draws across under the word, then retracts the other way */
+#appearance-label::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -4px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #fff 20%, #fff 80%, transparent);
+  box-shadow: 0 0 8px rgba(255,255,255,0.8);
+  opacity: 0;
+  transform: scaleX(0);
+  pointer-events: none;
+}
+#appearance-label.is-changing::after { animation: al-line 1s var(--nv-ease); }
+@keyframes al-line {
+  0%   { opacity: 1; transform: scaleX(0); transform-origin: left; }
+  45%  { opacity: 1; transform: scaleX(1); transform-origin: left; }
+  46%  { opacity: 1; transform: scaleX(1); transform-origin: right; }
+  100% { opacity: 0; transform: scaleX(0); transform-origin: right; }
+}
+/* the half-moon icon flips over with every change */
+#btn-appearance.is-changing .appearance-icon { animation: al-flip 0.9s var(--nv-spring); }
+@keyframes al-flip { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+/* light machines / reduced motion: a plain cross-fade */
+.perf-lite .al-word.is-in .al-ch  { animation: al-fade-in 0.25s both; }
+.perf-lite .al-word.is-out .al-ch { animation: al-fade-out 0.2s both; }
+.perf-lite #appearance-label::after, .perf-lite #btn-appearance.is-changing .appearance-icon { animation: none !important; }
+@keyframes al-fade-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes al-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .al-word.is-in .al-ch  { animation: al-fade-in 0.2s both; }
+  .al-word.is-out .al-ch { animation: al-fade-out 0.15s both; }
+  #appearance-label::after, #btn-appearance.is-changing .appearance-icon { animation: none !important; }
+}
+
 /* Thumbnail photo overlay: the canvas's own unfiltered pixels, shown only in Smart Dark */
 .thumb-stack { position: relative; flex: none; line-height: 0; }   /* shrink-wraps the canvas */
 .thumbnail-canvas-wrap canvas.nivra-image-overlay {
