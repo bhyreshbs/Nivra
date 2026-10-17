@@ -46,6 +46,25 @@
   #promo .copy { position: relative; z-index: 1; }
   #promo .name { font-size: 40px; letter-spacing: .12em; line-height: 1; }
   #promo .tag  { margin-top: 10px; font-size: 15px; line-height: 1.35; color: #d8cdb4; max-width: 17ch; }
+  /* 1400 x 560 large promo tile */
+  #promo-large {
+    width: 1400px; height: 560px; position: relative; overflow: hidden;
+    background: var(--ink); color: var(--paper);
+  }
+  #promo-large .shot {
+    position: absolute; top: 0; right: 0; width: 880px; height: 560px;
+    clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%);
+    object-fit: cover; object-position: 22% 12%;
+  }
+  #promo-large .edge { /* thin vermilion line along the slant */
+    position: absolute; top: 0; right: 880px; width: 3px; height: 640px; margin-right: -141px;
+    background: var(--vermilion); transform-origin: top; transform: rotate(14.3deg) translateX(0);
+  }
+  #promo-large .copy { position: absolute; left: 72px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; width: 640px; }
+  #promo-large .row1 { display: flex; align-items: center; gap: 28px; }
+  #promo-large .name { font-size: 80px; letter-spacing: .14em; line-height: 1; }
+  #promo-large .tag { margin-top: 28px; font-size: 40px; line-height: 1.15; max-width: 14em; }
+  #promo-large .sub { margin-top: 26px; font-size: 20px; letter-spacing: .08em; color: #cbbf9f; }
   #promo .mini { position: absolute; z-index: 1; right: 22px; bottom: 18px; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); }
 </style>
 </head>
@@ -172,6 +191,22 @@
   </div>
 </section>
 
+<section>
+  <h2>Large promotional tile — 1400 × 560</h2>
+  <p class="note">Screenshot just this box at 100% browser zoom (it is exactly 1400×560 px). Keep the text large and short: the store shows it small.</p>
+  <div class="actions" style="margin:0 0 16px"><button id="dl-promo-large">Download 1400×560 PNG</button></div>
+  <div id="promo-large">
+    <img class="shot" src="assets/Screenshots/1-1280x800.png" alt="">
+    <div class="edge"></div>
+    <div class="copy">
+      <div class="row1"><span id="promo-large-mark"></span><div class="name">NIVRA</div></div>
+      <div class="tag">PDFs, easier on the eyes.</div>
+      <div class="sub">SMART DARK · PROFILES · PRIVATE</div>
+    </div>
+  </div>
+</section>
+
+<script src="promo-shot.js"></script>
 <script>
   const tpl = document.getElementById('mark').innerHTML;
   const put = (el, size) => {
@@ -186,6 +221,7 @@
   put(document.getElementById('big'), 420);
   document.querySelectorAll('[data-size]').forEach(e => put(e, +e.dataset.size));
   put(document.getElementById('promo-mark'), 128);
+  put(document.getElementById('promo-large-mark'), 150);
 
   // ---- export -------------------------------------------------------------
   const markSvg = size => {
@@ -201,6 +237,43 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
+  // ---- 1400 x 560 promo tile, drawn straight to a canvas (sharp, exact size) ----
+  const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  document.getElementById('dl-promo-large').onclick = async () => {
+    try {
+      if (!window.PROMO_SHOT) throw new Error('promo-shot.js is missing — run "node make-promo-shot.js" in the project folder, then reload this page');
+      const W = 1400, H = 560, serif = "'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif";
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
+      g.fillStyle = '#17140f'; g.fillRect(0, 0, W, H);
+
+      // screenshot, cut on the slant (same geometry as the preview above)
+      const shot = await loadImg(window.PROMO_SHOT);
+      const bx = 520, bw = 880, s = Math.max(bw / shot.width, H / shot.height);
+      const dw = shot.width * s, dh = shot.height * s;
+      g.save();
+      g.beginPath(); g.moveTo(bx + bw * 0.16, 0); g.lineTo(W, 0); g.lineTo(W, H); g.lineTo(bx, H); g.closePath(); g.clip();
+      g.drawImage(shot, bx + (bw - dw) * 0.22, (H - dh) * 0.12, dw, dh);
+      g.restore();
+      g.strokeStyle = '#d9482b'; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(bx + bw * 0.16, 0); g.lineTo(bx, H); g.stroke();
+
+      // mark + text
+      const mark = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(markSvg(300)));
+      const top = 143;
+      g.drawImage(mark, 72, top, 150, 150);
+      g.fillStyle = '#efe6d2'; g.textBaseline = 'middle';
+      g.font = `80px ${serif}`; g.letterSpacing = '11.2px';
+      g.fillText('NIVRA', 250, top + 75);
+      g.letterSpacing = '0px'; g.textBaseline = 'top';
+      g.font = `40px ${serif}`; g.fillText('PDFs, easier on the eyes.', 72, top + 150 + 28 + 3);
+      g.fillStyle = '#cbbf9f'; g.font = `20px ${serif}`; g.letterSpacing = '1.6px';
+      g.fillText('SMART DARK · PROFILES · PRIVATE', 72, top + 150 + 28 + 46 + 26 + 2);
+
+      c.toBlob(b => save(b, 'nivra-promo-1400x560.png'), 'image/png');
+    } catch (e) { alert('Could not export: ' + e.message); }
+  };
+
   document.getElementById('dl-svg').onclick = () =>
     save(new Blob([markSvg(1024)], { type: 'image/svg+xml' }), 'nivra-logo.svg');
   document.querySelectorAll('[data-png]').forEach(btn => btn.onclick = () => {
