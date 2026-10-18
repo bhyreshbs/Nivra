@@ -52,8 +52,16 @@
   (function () {
     var b = new URLSearchParams(location.search).get('b');
     if (!b) b = /\bEdg\//.test(navigator.userAgent) ? 'edge' : 'chrome';
-    var store = { edge: 'the Microsoft Edge Add-ons store', chrome: 'the Chrome Web Store' }[b];
-    if (store) document.getElementById('store').textContent = store;
+    var el = document.getElementById('store');
+    if (b === 'edge') {
+      el.textContent = '';
+      var a = document.createElement('a');
+      a.href = 'https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp';
+      a.textContent = 'the Microsoft Edge Add-ons store';
+      el.appendChild(a);
+    } else if (b === 'chrome') {
+      el.textContent = 'the Chrome Web Store (coming soon)';
+    }
   })();
 </script>
 </body>

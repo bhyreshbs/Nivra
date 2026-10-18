@@ -7,8 +7,23 @@ Nivra is a local-first browser extension (Microsoft Edge, Chrome and other Chrom
 > Open. Transform. Read.
 > No upload. No conversion. No modification.
 
-**Highlights (v1.6)**
+## Install
 
+| Browser | Status | Link |
+|---|---|---|
+| Microsoft Edge | Available | [Get Nivra on Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp) |
+| Google Chrome | Coming soon | — |
+| Brave | Coming soon | — |
+| Opera | Coming soon | — |
+| Firefox | Coming soon | — |
+
+After installing, turn on **Allow access to file URLs** for Nivra on your browser's extensions page to open PDFs saved on your computer. A welcome page walks you through it.
+
+**Highlights (v1.6.1)**
+
+- Automatic PDF redirection on Microsoft Edge and Chrome, for web `.pdf` links and local `file://` PDFs, with an Edge-specific fallback for when Edge's own viewer wins the race
+- A popup banner that tells you when "Allow access to file URLs" is off, and browser-aware wording (Edge or Chrome)
+- A welcome page on first install and a goodbye page on uninstall (static pages in `docs/`, served by GitHub Pages)
 - Smart Dark that keeps photos, charts and diagrams in their real colours (pages *and* sidebar thumbnails)
 - Profiles (Reading, Night, Study, Focus, Original) and a "Remember for this site" look per website
 - Settings that persist: mode, brightness, contrast, zoom, sidebar, two-page view, toolbar state
@@ -21,6 +36,7 @@ Nivra is a local-first browser extension (Microsoft Edge, Chrome and other Chrom
 
 ## Table of Contents
 
+- [Install](#install)
 - [What Nivra Is](#what-nivra-is)
 - [What Nivra Is Not](#what-nivra-is-not)
 - [Core Principles](#core-principles)
@@ -109,7 +125,9 @@ PDF (online or local)
 Key implementation notes:
 
 - Chrome's native PDF viewer is intercepted via a `declarativeNetRequest` rule that redirects PDF navigations to Nivra's own `viewer.html?file=<url>`, the same general approach used by existing PDF.js-based Chrome extensions.
-- Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `chrome://extensions` — this can't be granted programmatically and should be called out in onboarding.
+- On Microsoft Edge, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged.
+- Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `edge://extensions` or `chrome://extensions` — this can't be granted programmatically. The popup shows a banner when it is off, and the welcome page explains it.
+- On first install the extension opens `docs/welcome.html`; `setUninstallURL` points at `docs/goodbye.html`. Both are hosted by GitHub Pages (`SITE_URL` in `background/sw.js`) and receive only the version and browser family.
 - The PDF.js text layer is used as-is for selection/search — it's not something Nivra needs to build itself.
 - "Smart Dark" (background/text vs. photo/chart differentiation) has no off-the-shelf solution; see [Development Roadmap, Phase 4](#development-roadmap) — treat this as an R&D track, not a v1 blocker.
 
@@ -259,7 +277,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download. Packaged for the Microsoft Edge Add-ons store (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge PDF fallback, install/uninstall pages. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 

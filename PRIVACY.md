@@ -1,6 +1,6 @@
 # Nivra — Privacy Policy
 
-_Last updated: 17 October 2026_
+_Last updated: 18 October 2026_
 
 Nivra is a PDF viewer extension for Microsoft Edge and Chromium browsers. It is built to work entirely on your device.
 

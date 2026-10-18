@@ -38,6 +38,8 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - [ ] Outline tab (on a PDF with bookmarks and one without), search, zoom, fit, two-page view, rotate (button + R)
 - [ ] Print, download transformed copy, document properties
 - [ ] Bottom bar collapse / expand; Appearance button label animation and mode swap
+- [ ] Fresh install opens the welcome page; removing the extension opens the goodbye page (both load from GitHub Pages)
+- [ ] With "Allow access to file URLs" off, the popup shows the banner; with it on, the banner is gone
 - [ ] No red errors in the viewer console (F12) and none under the extension's Errors on `edge://extensions`
 - [ ] `npm test` passes
 
@@ -45,7 +47,9 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - Review store reviews (anything under 3 stars is an early warning) and note repeat complaints
 - Confirm `https://bhyreshbs.github.io/Nivra/privacy.html` loads and shows the current contact address
 - Send a test mail to `support@bhyresh.me` and confirm it arrives
-- Keep `package.json` and `manifest.json` versions identical
+- Keep `package.json` and `manifest.json` versions identical (and the `v…` label in `popup/popup.html`)
+- Confirm `welcome.html` and `goodbye.html` load under `https://bhyreshbs.github.io/Nivra/` (`SITE_URL` in `background/sw.js`)
+- Live Edge listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp
 
 ## Releasing an update
 

@@ -1,5 +1,13 @@
 # Microsoft Edge Add-ons — submission cheat sheet
 
+Live listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp
+
+| Store | Status |
+|---|---|
+| Microsoft Edge Add-ons | Published |
+| Chrome Web Store | Coming soon |
+| Others (Brave, Opera, Firefox) | Coming soon |
+
 Upload: `nivra-<version>.zip` from `npm run package`.
 
 ## Name
@@ -40,6 +48,8 @@ pdf, dark mode, pdf viewer, night mode, invert, reader, accessibility
 
 ## Notes for certification (paste into "Notes for certification")
 Nivra replaces the browser's built-in PDF viewer by redirecting navigations to .pdf URLs (declarativeNetRequest) to its own viewer page, which renders the file with a bundled copy of PDF.js (Apache-2.0). `host_permissions` are limited to URLs ending in .pdf (http, https, file) — needed to read the document. `storage` holds user settings; `activeTab` lets the popup detect a PDF in the current tab. No remote code, no network requests other than the user's own PDF download, no analytics. `wasm-unsafe-eval` in the CSP is required by PDF.js's WebAssembly image decoders (JPEG2000/JBIG2/color management).
+
+On first install Nivra opens a static welcome page, and it registers an uninstall URL for a static goodbye page, both on bhyreshbs.github.io/Nivra (hosted by GitHub Pages). Only the extension version and browser family are in the URL; there are no analytics. On Edge a `tabs.onUpdated` fallback redirects tabs that still show a .pdf URL; it uses the existing host permissions and adds none.
 
 To test: open any https://…/file.pdf link — it should open in Nivra. Toggle Nivra off in the toolbar popup to restore the browser viewer. Drop a PDF on the popup's "Open a PDF" area to open a local file.
 
