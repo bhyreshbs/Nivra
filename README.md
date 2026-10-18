@@ -259,7 +259,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.6.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download. Packaged for the Microsoft Edge Add-ons store (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download. Packaged for the Microsoft Edge Add-ons store (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 

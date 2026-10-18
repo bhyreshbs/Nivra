@@ -21,6 +21,10 @@ Nivra saves a few settings in your browser (`chrome.storage.local`): whether Niv
 - No data is sold, shared or sent to third parties.
 - No remote code is loaded; everything Nivra runs ships inside the extension package.
 
+## Install and uninstall pages
+
+After you install Nivra, it opens a welcome page; when you remove it, your browser opens a goodbye page. Both are static pages on this site. The address carries only the Nivra version and your browser family (Edge or Chrome). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.
+
 ## Permissions
 
 | Permission | Why |

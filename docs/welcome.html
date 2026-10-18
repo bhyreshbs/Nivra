@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome to Nivra</title>
+<style>
+  body { font: 16px/1.6 Georgia, 'Iowan Old Style', serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.25rem; color: #1d1b16; background: #faf6ec; }
+  h1 { font-weight: 400; letter-spacing: .02em; }
+  h2 { font-weight: 400; margin-top: 2.2rem; border-bottom: 1px solid #d8cfb8; padding-bottom: .3rem; }
+  code { background: #efe6d2; padding: 0 .25em; border-radius: 3px; }
+  button { font: inherit; font-size: .85rem; margin-left: .4rem; padding: .1rem .6rem; border: 1px solid #d8cfb8; border-radius: 6px; background: #efe6d2; cursor: pointer; }
+  .meta { color: #6c6552; }
+  .only-edge, .only-chrome { display: none; }
+  html.edge .only-edge, html.chrome .only-chrome { display: inline; }
+</style>
+</head>
+<body>
+<h1>Nivra is installed</h1>
+<p class="meta">Thanks for trying it. Here is how to get the most out of it.</p>
+
+<h2>1. Open any PDF</h2>
+<p>With Nivra turned on, PDF links and web addresses ending in <code>.pdf</code> open in Nivra automatically. Use the display modes (Smart Dark, Invert, Grayscale, High Contrast) from the bar at the bottom of the viewer. Your original file is never changed.</p>
+
+<h2>2. Turn on local PDFs</h2>
+<p>To open PDFs stored on your computer, switch on <strong>Allow access to file URLs</strong> for Nivra. The browser does not let extensions do this for you.</p>
+<ol>
+  <li>Open <code id="ext-url">edge://extensions</code> <button type="button" id="copy-url">copy</button><br>
+    <span class="meta">(Browsers block links to this page, so paste it into the address bar.)</span></li>
+  <li>Find <strong>Nivra</strong> and click <strong>Details</strong>.</li>
+  <li>Turn on <strong>Allow access to file URLs</strong>.</li>
+</ol>
+<p class="meta">You can also open a local PDF without this step: click the Nivra toolbar icon and drop the file on the popup.</p>
+
+<h2>3. Pin the icon</h2>
+<p>Click the puzzle-piece (Extensions) button in the toolbar and pin Nivra. The popup has the on/off switch: when it is off, PDFs open in <span class="only-edge">Edge's</span><span class="only-chrome">Chrome's</span> own viewer again.</p>
+
+<h2>Private by design</h2>
+<p>PDFs are processed on your device and never uploaded. No accounts, no tracking. <a href="privacy.html">Read the privacy policy</a>.</p>
+
+<h2>Help</h2>
+<p>Questions or problems: <a href="mailto:support@bhyresh.me">support@bhyresh.me</a></p>
+
+<script>
+  (function () {
+    var edge = /\bEdg\//.test(navigator.userAgent);
+    document.documentElement.className = edge ? 'edge' : 'chrome';
+    var url = edge ? 'edge://extensions' : 'chrome://extensions';
+    var el = document.getElementById('ext-url');
+    el.textContent = url;
+    document.getElementById('copy-url').addEventListener('click', function (e) {
+      var b = e.currentTarget;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          b.textContent = 'copied!';
+          setTimeout(function () { b.textContent = 'copy'; }, 1800);
+        });
+      }
+    });
+  })();
+</script>
+</body>
+</html>

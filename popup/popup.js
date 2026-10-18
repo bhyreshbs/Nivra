@@ -25,6 +25,9 @@ const openDetail    = document.getElementById('open-nivra-detail');
 const btnFileAccess = document.getElementById('btn-file-access');
 const btnShortcuts  = document.getElementById('btn-keyboard-shortcuts');
 
+const IS_EDGE = /\bEdg\//.test(navigator.userAgent);
+const BROWSER = IS_EDGE ? 'Edge' : 'Chrome';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const EXTENSION_ID = chrome.runtime.id;
 const VIEWER_PATH  = 'viewer/viewer.html';
@@ -130,7 +133,7 @@ function _setToggleUI(enabled) {
     statusCard.classList.remove('active');
     statusDot.classList.remove('on');
     statusLabel.textContent = 'Disabled';
-    statusDetail.textContent = 'PDFs use Chrome default viewer';
+    statusDetail.textContent = `PDFs use ${BROWSER}'s default viewer`;
   }
 }
 
@@ -201,12 +204,23 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => e.preventDefault());
 
 // ─── File URL Access ──────────────────────────────────────────────────────────
-btnFileAccess.addEventListener('click', () => {
+function _openExtensionSettings() {
   chrome.tabs.create({
-    url: `chrome://extensions/?id=${EXTENSION_ID}`
+    url: `${IS_EDGE ? 'edge' : 'chrome'}://extensions/?id=${EXTENSION_ID}`
   });
   window.close();
-});
+}
+btnFileAccess.addEventListener('click', _openExtensionSettings);
+document.getElementById('btn-banner-access').addEventListener('click', _openExtensionSettings);
+
+// Local PDFs only work with "Allow access to file URLs"; say so instead of failing silently.
+(async function _checkFileAccess() {
+  try {
+    const { allowed } = await chrome.runtime.sendMessage({ type: 'GET_FILE_ACCESS' });
+    document.getElementById('access-banner').hidden = !!allowed;
+    if (allowed) document.getElementById('file-access-detail').textContent = 'Local PDF support is on';
+  } catch (_) { /* worker unavailable: leave the banner hidden */ }
+})();
 
 // ─── Keyboard Shortcuts ──────────────────────────────────────────────────────
 btnShortcuts.addEventListener('click', () => {

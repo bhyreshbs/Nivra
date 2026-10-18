@@ -375,6 +375,32 @@ body > :nth-child(5) { animation-delay: 0.18s; }
 }
 .popup-footer-text a:hover { color: #fff; background-size: 100% 1px; }
 
+/* ─── File access banner ───────────────────────────────────────────────────── */
+.access-banner {
+  margin: 0 20px 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 190, 80, 0.10);
+  border: 1px solid rgba(255, 190, 80, 0.28);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--nv-fg-dim);
+}
+.access-banner[hidden] { display: none; }
+.access-banner strong { color: var(--nv-fg); font-weight: 600; }
+.access-banner button {
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--nv-edge);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: var(--nv-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.access-banner button:hover { background: rgba(255,255,255,0.14); }
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

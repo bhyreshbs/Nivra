@@ -14,7 +14,7 @@
     <div class="popup-header-text">
       <div class="popup-title">
         Nivra
-        <span class="popup-version">v1.6.0</span>
+        <span class="popup-version">v1.6.1</span>
       </div>
       <div class="popup-subtitle">PDF Viewer &amp; Visual Engine</div>
     </div>
@@ -51,6 +51,13 @@
     </label>
   </div>
 
+  <!-- ─── File access banner (shown only when local PDFs cannot be intercepted) ── -->
+  <div class="access-banner" id="access-banner" hidden>
+    <strong>Local PDFs need one more step.</strong>
+    Turn on <em>Allow access to file URLs</em> for Nivra so PDFs on your computer open here.
+    <br><button type="button" id="btn-banner-access">Open extension settings</button>
+  </div>
+
   <!-- ─── Quick Actions ───────────────────────────────────────────────── -->
   <div class="action-list">
     <div class="section-label">Quick Actions</div>
@@ -81,7 +88,7 @@
       </div>
       <div class="action-text">
         <div class="action-text-primary">File URL Access</div>
-        <div class="action-text-secondary">Enable local PDF support</div>
+        <div class="action-text-secondary" id="file-access-detail">Enable local PDF support</div>
       </div>
       <svg class="action-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="9 18 15 12 9 6"/>
