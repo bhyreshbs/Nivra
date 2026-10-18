@@ -3,26 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#050507">
 <title>Nivra was removed</title>
-<style>
-  body { font: 16px/1.6 Georgia, 'Iowan Old Style', serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.25rem; color: #1d1b16; background: #faf6ec; }
-  h1 { font-weight: 400; letter-spacing: .02em; }
-  h2 { font-weight: 400; margin-top: 2.2rem; border-bottom: 1px solid #d8cfb8; padding-bottom: .3rem; }
-  .meta { color: #6c6552; }
-</style>
+<link rel="stylesheet" href="nivra.css">
 </head>
 <body>
-<h1>Nivra has been removed</h1>
-<p class="meta">Sorry to see it go. PDFs now open in your browser's own viewer again.</p>
+<div class="backdrop" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
 
-<h2>Tell me what went wrong</h2>
-<p>If something did not work, looked wrong, or was missing, a short note helps a lot. Nothing was collected when you uninstalled; this page does not know who you are.</p>
-<p><a href="mailto:support@bhyresh.me?subject=Nivra%20feedback">support@bhyresh.me</a></p>
+<nav class="nav">
+  <a class="brand" href="welcome.html">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fd1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><path d="M20.5 7.5a9 9 0 1 0 4 12.8A7.5 7.5 0 0 1 20.5 7.5z" fill="#07070a"/></svg>
+    <span>Nivra</span>
+  </a>
+  <div class="nav-note">We'll miss you. <span>The dark will too.</span></div>
+</nav>
 
-<h2>Removed by mistake?</h2>
-<p>Search for <strong>Nivra</strong> in the Microsoft Edge Add-ons store or the Chrome Web Store to install it again. Your saved settings were deleted with the extension.</p>
+<main class="wrap">
+  <header class="hero">
+    <span class="eyebrow rise"><i></i> Uninstalled</span>
+    <h1 class="rise d1">Goodnight, for now</h1>
+    <p class="lead rise d2">Nivra has been removed and PDFs open in your browser's own viewer again. Thanks for giving it a try.</p>
+  </header>
 
-<h2>Your data</h2>
-<p>Nivra kept everything on your device and removed it with the extension. See the <a href="privacy.html">privacy policy</a>.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <h3>Tell me what went wrong</h3>
+      <p>Something broken, ugly or missing? A short note helps a lot. Nothing was collected when you uninstalled; this page does not know who you are.</p>
+      <p style="margin-top:1rem"><a class="btn" href="mailto:support@bhyresh.me?subject=Nivra%20feedback">Send feedback</a></p>
+    </div>
+    <div class="card">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+      <h3>Removed by mistake?</h3>
+      <p>Search for <strong>Nivra</strong> in <span id="store">the Microsoft Edge Add-ons store or the Chrome Web Store</span> to install it again. Your saved settings were deleted with the extension.</p>
+    </div>
+    <div class="card">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      <h3>Your data</h3>
+      <p>Nivra kept everything on your device and removed it with the extension. See the <a href="privacy.html">privacy policy</a>.</p>
+    </div>
+  </div>
+
+  <footer>Nivra · Built by <a href="https://bhyresh.me">Bhyresh</a></footer>
+</main>
+<script>
+  // The extension adds ?b=edge|chrome; fall back to the user agent if it is missing.
+  (function () {
+    var b = new URLSearchParams(location.search).get('b');
+    if (!b) b = /\bEdg\//.test(navigator.userAgent) ? 'edge' : 'chrome';
+    var store = { edge: 'the Microsoft Edge Add-ons store', chrome: 'the Chrome Web Store' }[b];
+    if (store) document.getElementById('store').textContent = store;
+  })();
+</script>
 </body>
 </html>
