@@ -70,6 +70,14 @@ function _isRawPdfUrl(url) {
   return /\.pdf(\?[^#]*)?(#.*)?$/i.test(url);
 }
 
+/**
+ * Firefox does not let extension pages read file:// URLs, so a local PDF tab stays
+ * in Firefox's own viewer; the drop zone is the way to open it in Nivra there.
+ */
+function _isFirefoxLocalFile(url) {
+  return IS_FIREFOX && url.startsWith('file:');
+}
+
 // ─── Initialize ───────────────────────────────────────────────────────────────
 (async function init() {
   // Ask the service worker for the current state (this also wakes it up)
@@ -115,7 +123,7 @@ toggle.addEventListener('change', async () => {
       // Enabled → if the current tab has a raw PDF URL (e.g. user disabled
       // Nivra, opened a PDF in Chrome viewer, then re-enabled), push it
       // through the Nivra viewer.
-      if (_isRawPdfUrl(tab.url)) {
+      if (_isRawPdfUrl(tab.url) && !_isFirefoxLocalFile(tab.url)) {
         const nivraUrl = chrome.runtime.getURL(VIEWER_PATH) + '?file=' + encodeURIComponent(tab.url);
         chrome.tabs.update(tab.id, { url: nivraUrl });
         window.close();
@@ -152,7 +160,9 @@ async function _checkActiveTab() {
     const isAlreadyNivra = !!_extractNivraPdfUrl(url);
     const isRawPdf = _isRawPdfUrl(url);
 
-    if (isRawPdf) {
+    if (isRawPdf && _isFirefoxLocalFile(url)) {
+      openDetail.textContent = 'Local file: drop it on the box above to open it in Nivra';
+    } else if (isRawPdf) {
       btnOpenNivra.disabled = false;
       openDetail.textContent = 'Render this PDF with Nivra';
 

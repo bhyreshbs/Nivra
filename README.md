@@ -19,6 +19,8 @@ Nivra is a local-first browser extension (Microsoft Edge, Chrome and other Chrom
 
 After installing, turn on **Allow access to file URLs** for Nivra on your browser's extensions page to open PDFs saved on your computer. A welcome page walks you through it.
 
+**Firefox:** allow Nivra's site access when the popup asks (or in `about:addons` → Nivra → Permissions) so PDF links open in Nivra. Firefox does not let add-ons open files from your computer, so local PDFs (`file://`) stay in Firefox's own viewer; to read one in Nivra, drop it on the Nivra popup.
+
 **Highlights (v1.6.1)**
 
 - Automatic PDF redirection on Microsoft Edge and Chrome, for web `.pdf` links and local `file://` PDFs, with an Edge-specific fallback for when Edge's own viewer wins the race
@@ -127,6 +129,7 @@ Key implementation notes:
 - Chrome's native PDF viewer is intercepted via a `declarativeNetRequest` rule that redirects PDF navigations to Nivra's own `viewer.html?file=<url>`, the same general approach used by existing PDF.js-based Chrome extensions.
 - On Microsoft Edge, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged.
 - Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `edge://extensions` or `chrome://extensions` — this can't be granted programmatically. The popup shows a banner when it is off, and the welcome page explains it.
+- Firefox has its own build (`npm run package:firefox`, `manifest.firefox.json`, `background/sw.firefox.js`): a blocking `webRequest.onBeforeRequest` listener redirects web PDF navigations. `webRequest` never fires for `file://` and extension pages cannot read `file://` URLs there, so local PDFs are left to Firefox's viewer, the Firefox manifest requests no `file:///` access, and the popup points to drag-and-drop instead of offering "Open in Nivra" on a local tab.
 - On first install the extension opens `docs/welcome.html`; `setUninstallURL` points at `docs/goodbye.html`. Both are hosted by GitHub Pages (`SITE_URL` in `background/sw.js`) and receive only the version and browser family.
 - The PDF.js text layer is used as-is for selection/search — it's not something Nivra needs to build itself.
 - "Smart Dark" (background/text vs. photo/chart differentiation) has no off-the-shelf solution; see [Development Roadmap, Phase 4](#development-roadmap) — treat this as an R&D track, not a v1 blocker.
