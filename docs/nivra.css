@@ -204,6 +204,20 @@ code { font: .88em ui-monospace, 'Cascadia Code', Consolas, monospace; padding: 
   border: 1px solid var(--edge); border-radius: 999px; background: rgba(255,255,255,.08);
 }
 .mini:hover { background: rgba(255,255,255,.16); }
+/* Feedback form (goodbye page) */
+.fb { margin-top: 1rem; display: grid; gap: .7rem; }
+.fb label { display: grid; gap: .25rem; font-size: .85rem; color: var(--fg-dim); }
+.fb select, .fb textarea, .fb input {
+  font: inherit; font-size: .95rem; color: var(--fg); padding: .6rem .8rem; border-radius: 10px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--edge); width: 100%;
+}
+.fb select option { background: #15151c; color: var(--fg); }
+.fb textarea { min-height: 7rem; resize: vertical; }
+.fb select:focus, .fb textarea:focus, .fb input:focus { outline: 2px solid var(--a1); outline-offset: 1px; }
+.fb-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.fb-status { font-size: .9rem; color: var(--fg-dim); margin: 0; }
+.fb-status.ok { color: #7be3a5; }
+.fb-status.err { color: var(--amber); }
 .only-edge, .only-chrome { display: none; }
 html.edge .only-edge, html.chrome .only-chrome { display: inline; }
 

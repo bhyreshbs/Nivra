@@ -31,7 +31,32 @@
       <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
       <h3>Tell me what went wrong</h3>
       <p>Something broken, ugly or missing? A short note helps a lot. Nothing was collected when you uninstalled; this page does not know who you are.</p>
-      <p style="margin-top:1rem"><a class="btn" href="mailto:support@bhyresh.me?subject=Nivra%20feedback">Send feedback</a></p>
+      <form class="fb" id="fb" novalidate>
+        <label>What went wrong?
+          <select id="fb-reason">
+            <option>Something was broken</option>
+            <option>It looked wrong or ugly</option>
+            <option>A feature was missing</option>
+            <option>It was slow</option>
+            <option>I didn't need it</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Your note
+          <textarea id="fb-message" maxlength="4000" placeholder="A sentence or two is plenty."></textarea>
+        </label>
+        <label>Your email <span class="meta">(optional, only if you want a reply)</span>
+          <input id="fb-email" type="email" autocomplete="email" placeholder="you@example.com">
+        </label>
+        <input id="fb-website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <div class="fb-actions">
+          <button class="btn" type="submit" id="fb-send">Send feedback</button>
+          <span id="fb-fallback" hidden>
+            <a class="mini" id="fb-mail" href="#">open in mail app</a><a class="mini" id="fb-gmail" href="#" target="_blank" rel="noopener">open in Gmail</a><button type="button" class="mini" id="fb-copy">copy message</button>
+          </span>
+        </div>
+        <p class="fb-status" id="fb-status" role="status" aria-live="polite"></p>
+      </form>
     </div>
     <div class="card">
       <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
@@ -67,6 +92,60 @@
     } else if (b === 'chrome') {
       el.textContent = 'the Chrome Web Store (coming soon)';
     }
+  })();
+</script>
+<script>
+  // Feedback. With FEEDBACK_KEY set (a free Web3Forms access key, https://web3forms.com),
+  // "Send feedback" posts the note straight to the owner's inbox. Without it the form still
+  // works: it prepares the message and offers mail app / Gmail / copy, because a bare
+  // mailto: link does nothing on computers with no mail app configured.
+  (function () {
+    var FEEDBACK_KEY = '';
+    var TO = 'support@bhyresh.me';
+    var q = new URLSearchParams(location.search);
+    var meta = 'Nivra ' + (q.get('v') || '?') + ' / ' + (q.get('b') || 'unknown browser');
+    var $ = function (id) { return document.getElementById(id); };
+    var status = function (text, cls) { $('fb-status').textContent = text; $('fb-status').className = 'fb-status' + (cls ? ' ' + cls : ''); };
+    var subject = function () { return 'Nivra feedback: ' + $('fb-reason').value; };
+    var body = function () {
+      var email = $('fb-email').value.trim();
+      return $('fb-message').value.trim() + '\n\n--\nReason: ' + $('fb-reason').value + '\n' + meta + (email ? '\nReply to: ' + email : '');
+    };
+    var fallback = function () {
+      var s = encodeURIComponent(subject()), b = encodeURIComponent(body());
+      $('fb-mail').href = 'mailto:' + TO + '?subject=' + s + '&body=' + b;
+      $('fb-gmail').href = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + TO + '&su=' + s + '&body=' + b;
+      $('fb-fallback').hidden = false;
+    };
+    $('fb-copy').addEventListener('click', function (e) {
+      var btn = e.currentTarget, text = 'To: ' + TO + '\nSubject: ' + subject() + '\n\n' + body();
+      var done = function () { btn.textContent = 'copied!'; setTimeout(function () { btn.textContent = 'copy message'; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+    });
+    $('fb').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!$('fb-message').value.trim()) { status('Please write a short note first.', 'err'); $('fb-message').focus(); return; }
+      if ($('fb-website').value) return; // honeypot: bots fill hidden fields
+      if (!FEEDBACK_KEY) {
+        fallback();
+        status('Choose how to send it: your mail app, Gmail, or copy it and email ' + TO + '.', '');
+        return;
+      }
+      $('fb-send').disabled = true; status('Sending…', '');
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: FEEDBACK_KEY, subject: subject(), from_name: 'Nivra goodbye page',
+          message: body(), email: $('fb-email').value.trim() || undefined
+        })
+      }).then(function (r) { return r.json(); }).then(function (r) {
+        if (!r.success) throw new Error(r.message || 'failed');
+        $('fb').reset(); status('Thank you, your note was sent.', 'ok');
+      }).catch(function () {
+        fallback(); status('Could not send it from here. Use one of the options below instead.', 'err');
+      }).then(function () { $('fb-send').disabled = false; });
+    });
   })();
 </script>
 </body>
