@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#050507">
+<title>Nivra was updated</title>
+<link rel="stylesheet" href="nivra.css">
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"><div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div></div>
+
+<nav class="nav">
+  <a class="brand" href="welcome.html">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fd1ff"/><stop offset="1" stop-color="#8b7bff"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#g)"/><path d="M20.5 7.5a9 9 0 1 0 4 12.8A7.5 7.5 0 0 1 20.5 7.5z" fill="#07070a"/></svg>
+    <span>Nivra</span>
+  </a>
+  <div class="nav-links">
+    <a href="welcome.html">Welcome</a>
+    <a href="update.html" aria-current="page">What's new</a>
+    <a href="privacy.html">Privacy</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <header class="hero">
+    <span class="eyebrow rise"><i></i> Updated</span>
+    <h1 class="rise d1">Nivra <span id="ver">1.7.1</span> is here</h1>
+    <p class="lead rise d2" id="lead">Here is what changed in this update. Your settings were kept.</p>
+  </header>
+
+  <div class="callout" id="local-note"><b>Local PDFs</b><span>PDFs saved on your computer only open in Nivra after you switch on <strong>Allow access to file URLs</strong> for Nivra on <code id="ext-url">your browser's extensions page</code><button type="button" class="mini" id="copy-url">copy</button>. Nivra's toolbar icon shows a red <strong>!</strong> until it is on. Paste that address into the address bar; browsers block links to it.</span></div>
+  <div class="callout" id="ff-note" hidden><b>Firefox</b><span>Click the Nivra icon and choose <strong>Allow site access</strong> if you have not yet, so PDF links open in Nivra. PDFs saved on your computer stay in Firefox's viewer; drop one on the Nivra popup to read it in Nivra.</span></div>
+
+  <h2>What's new</h2>
+  <p class="section-sub">Newest first. The release you just got is highlighted.</p>
+
+  <!-- Add each new release at the top of this list (and to CHANGELOG.md). data-v must match the version. -->
+  <div class="releases" id="releases">
+    <section class="card release" data-v="1.7.1">
+      <h3>1.7.1 <span class="meta">· latest</span></h3>
+      <ul class="ticks">
+        <li><strong>Local files made easy.</strong> Right after install a setup window shows whether local PDFs are switched on, red until they are, and turns green by itself once you do it.</li>
+        <li>A red <strong>!</strong> badge on the toolbar icon, and a red banner in the popup, while the step is still missing.</li>
+        <li>Firefox: the same window asks for <strong>site access</strong>, which Firefox needs before Nivra can open PDF links.</li>
+        <li>This page: Nivra now opens it after every update so you can see what changed.</li>
+        <li>The goodbye page has a working feedback form.</li>
+      </ul>
+    </section>
+    <section class="card release" data-v="1.7.0">
+      <h3>1.7.0</h3>
+      <ul class="ticks">
+        <li><strong>Opera and Firefox.</strong> Nivra now works in Opera and in Firefox (web PDF links; Firefox keeps local files in its own viewer).</li>
+        <li>One version number for every browser: Edge, Chrome, Opera and Firefox all ship the same release.</li>
+        <li>Opera and Edge get a fallback for when the browser's own PDF viewer opens first.</li>
+      </ul>
+    </section>
+    <section class="card release" data-v="1.6.1">
+      <h3>1.6.1</h3>
+      <ul class="ticks">
+        <li>Edge PDF fallback, a file-access banner in the popup, and the welcome and goodbye pages.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>Help</h2>
+  <p class="section-sub">Something not working after the update? Write to <a href="mailto:support@bhyresh.me">support@bhyresh.me</a>. Read the <a href="privacy.html">privacy policy</a>. Nivra never sends anything about you when it updates; this page only receives the version numbers in its address.</p>
+
+  <footer>Nivra · Built by <a href="https://bhyresh.me">Bhyresh</a></footer>
+</main>
+
+<script>
+  (function () {
+    // The extension opens this page as update.html?v=<new>&from=<old>&b=<browser>.
+    var q = new URLSearchParams(location.search);
+    var v = (q.get('v') || '').replace(/[^0-9.]/g, '');
+    var from = (q.get('from') || '').replace(/[^0-9.]/g, '');
+    var b = q.get('b');
+    var ua = navigator.userAgent, url = 'chrome://extensions';
+
+    if (v) document.getElementById('ver').textContent = v;
+    if (v && from && from !== v) {
+      document.getElementById('lead').textContent = 'Updated from ' + from + '. Here is what changed. Your settings were kept.';
+    }
+
+    // Highlight the release just installed; older ones stay listed for users coming from far back.
+    Array.prototype.forEach.call(document.querySelectorAll('.release'), function (el) {
+      if (v && el.getAttribute('data-v') === v) el.style.borderColor = 'rgba(139,123,255,.6)';
+    });
+
+    // Browser-specific note. ?b= wins; the user agent is the fallback.
+    var isFirefox = b === 'firefox' || (!b && /\bFirefox\//.test(ua));
+    if (b === 'edge' || (!b && /\bEdg\//.test(ua))) url = 'edge://extensions';
+    else if (b === 'opera' || (!b && /\bOPR\//.test(ua))) url = 'opera://extensions';
+    if (isFirefox) {
+      document.getElementById('local-note').hidden = true;
+      document.getElementById('ff-note').hidden = false;
+    } else {
+      document.getElementById('ext-url').textContent = url;
+    }
+    document.getElementById('copy-url').addEventListener('click', function (e) {
+      var btn = e.currentTarget;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          btn.textContent = 'copied!';
+          setTimeout(function () { btn.textContent = 'copy'; }, 1800);
+        });
+      }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -23,7 +23,7 @@ Nivra saves a few settings in your browser (`chrome.storage.local`, `browser.sto
 
 ## Install and uninstall pages
 
-After you install Nivra, it opens a welcome page; when you remove it, your browser opens a goodbye page. Both are static pages on this site. The address carries only the Nivra version and your browser family (Edge, Chrome, Opera or Firefox). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.
+After you install Nivra, it opens a welcome page; after you update it, it opens a "what's new" page; when you remove it, your browser opens a goodbye page. All three are static pages on this site. The address carries only the Nivra version (and, for the update page, the version you updated from) and your browser family (Edge, Chrome, Opera or Firefox). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.
 
 ## Feedback you choose to send
 

@@ -35,8 +35,8 @@ export const PDF_URL_RE = /^(https?|file):\/\/[^?#]*\.pdf(?:\?[^#]*)?(?:#.*)?$/i
 // ─── Install / uninstall pages ────────────────────────────────────────────────
 const SITE_URL = 'https://bhyreshbs.github.io/Nivra/';
 
-function _sitePage(name) {
-  return `${SITE_URL}${name}?v=${api.runtime.getManifest().version}&b=firefox`;
+function _sitePage(name, extra = '') {
+  return `${SITE_URL}${name}?v=${api.runtime.getManifest().version}&b=firefox${extra}`;
 }
 
 function _registerUninstallPage() {
@@ -131,6 +131,10 @@ api.runtime.onInstalled.addListener(async (details) => {
   if (details?.reason === 'install') {
     Promise.resolve(api.tabs.create({ url: _sitePage('welcome.html') })).catch(() => {});
     _openSetupWindow();
+  }
+  // After an extension update (not a browser update), show what changed.
+  if (details?.reason === 'update' && details.previousVersion !== api.runtime.getManifest().version) {
+    Promise.resolve(api.tabs.create({ url: _sitePage('update.html', `&from=${encodeURIComponent(details.previousVersion || '')}`) })).catch(() => {});
   }
   _updateAccessBadge();
 });

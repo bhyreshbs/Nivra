@@ -1,5 +1,5 @@
 // Builds the store submission: copies only the runtime files into dist/ and zips them
-// to nivra-<version>.zip (upload this to Microsoft Partner Center / Edge Add-ons).
+// to nivra-chromium-<version>.zip (upload this to Microsoft Partner Center / Edge Add-ons).
 // Run via `npm run package`.
 const fs = require('fs');
 const path = require('path');
@@ -60,7 +60,7 @@ if (!fs.existsSync(path.join(dist, '_locales', distManifest.default_locale, 'mes
   throw new Error('default_locale has no messages.json');
 }
 
-const zip = path.join(root, `nivra-${manifest.version}.zip`);
+const zip = path.join(root, `nivra-chromium-${manifest.version}.zip`);
 fs.rmSync(zip, { force: true });
 // bsdtar (Windows 10+, macOS) writes a zip with -a; entries use forward slashes.
 // On Windows use the system bsdtar explicitly: under Git Bash, "tar" is GNU tar, which can

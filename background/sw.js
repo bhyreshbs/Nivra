@@ -27,10 +27,10 @@ const STORAGE_KEY = 'nivraEnabled';
 // Only the extension version and browser family are sent in the query string.
 const SITE_URL = 'https://bhyreshbs.github.io/Nivra/';
 
-function _sitePage(name) {
+function _sitePage(name, extra = '') {
   const edge = /\bEdg\//.test(navigator.userAgent);
   const opera = !edge && /\bOPR\//.test(navigator.userAgent);
-  return `${SITE_URL}${name}?v=${chrome.runtime.getManifest().version}&b=${edge ? 'edge' : opera ? 'opera' : 'chrome'}`;
+  return `${SITE_URL}${name}?v=${chrome.runtime.getManifest().version}&b=${edge ? 'edge' : opera ? 'opera' : 'chrome'}${extra}`;
 }
 
 function _registerUninstallPage() {
@@ -192,6 +192,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   if (details?.reason === 'install') {
     chrome.tabs.create({ url: _sitePage('welcome.html') }).catch(() => {});
     _openSetupWindow();
+  }
+  // After an extension update (not a browser update), show what changed.
+  if (details?.reason === 'update' && details.previousVersion !== chrome.runtime.getManifest().version) {
+    chrome.tabs.create({ url: _sitePage('update.html', `&from=${encodeURIComponent(details.previousVersion || '')}`) }).catch(() => {});
   }
   _updateFileAccessBadge();
 });

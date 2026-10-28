@@ -4,10 +4,10 @@ Live listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaem
 
 | Store | Status | Upload |
 |---|---|---|
-| Microsoft Edge Add-ons | Published | `nivra-<version>.zip` (`npm run package`) |
+| Microsoft Edge Add-ons | Published | `nivra-chromium-<version>.zip` (`npm run package`) |
 | Opera Add-ons | Submitted 28 Oct 2026, awaiting moderation | `nivra-opera-<version>.zip` (`npm run package:opera`) |
 | Firefox Add-ons (AMO) | Ready to submit | `nivra-firefox-<version>.zip` (`npm run package:firefox`) + source zip |
-| Chrome Web Store | Coming soon | `nivra-<version>.zip` |
+| Chrome Web Store | Coming soon | `nivra-chromium-<version>.zip` |
 
 The Name, descriptions, category and search terms below are shared by every store. Each store's own notes follow.
 
@@ -56,7 +56,7 @@ pdf, dark mode, pdf viewer, night mode, invert, reader, accessibility
 ## Microsoft Edge: notes for certification (paste into "Notes for certification")
 Nivra replaces the browser's built-in PDF viewer by redirecting navigations to .pdf URLs (declarativeNetRequest) to its own viewer page, which renders the file with a bundled copy of PDF.js (Apache-2.0). `host_permissions` are limited to URLs ending in .pdf (http, https, file) — needed to read the document. `storage` holds user settings; `activeTab` lets the popup detect a PDF in the current tab. No remote code, no network requests other than the user's own PDF download, no analytics. `wasm-unsafe-eval` in the CSP is required by PDF.js's WebAssembly image decoders (JPEG2000/JBIG2/color management).
 
-On first install Nivra opens a static welcome page, and it registers an uninstall URL for a static goodbye page, both on bhyreshbs.github.io/Nivra (hosted by GitHub Pages). Only the extension version and browser family are in the URL; there are no analytics. On Edge a `tabs.onUpdated` fallback redirects tabs that still show a .pdf URL; it uses the existing host permissions and adds none.
+On first install Nivra opens a static welcome page and a small setup window (an extension page that shows whether "Allow access to file URLs" is on); after an update it opens a static "what's new" page; and it registers an uninstall URL for a static goodbye page. The three pages are on bhyreshbs.github.io/Nivra (hosted by GitHub Pages). Only the extension version and browser family are in the URL; there are no analytics. On Edge a `tabs.onUpdated` fallback redirects tabs that still show a .pdf URL; it uses the existing host permissions and adds none.
 
 To test: open any https://…/file.pdf link — it should open in Nivra. Toggle Nivra off in the toolbar popup to restore the browser viewer. Drop a PDF on the popup's "Open a PDF" area to open a local file.
 
@@ -106,7 +106,7 @@ Permissions:
 - `storage`: user settings (on/off, display mode, brightness, contrast, per-site look). Never transmitted.
 - `activeTab`: the popup checks whether the current tab is a PDF to offer "Open in Nivra".
 - CSP `wasm-unsafe-eval`: required by PDF.js's WebAssembly image decoders (JPEG2000, JBIG2, colour management), all shipped in pdfjs/web/wasm/. No remote code, no eval.
-- No data collection (data_collection_permissions: none). The only network requests are the user's own PDF downloads. On first install a static welcome page is opened and an uninstall URL is set, both on bhyreshbs.github.io/Nivra (GitHub Pages); the URL carries only the version and b=firefox.
+- No data collection (data_collection_permissions: none). The only network requests are the user's own PDF downloads. On first install a setup window (setup/setup.html, an extension page that asks the user to allow site access) and a static welcome page are opened; after an update a static "what's new" page is opened; an uninstall URL is set. The static pages are on bhyreshbs.github.io/Nivra (GitHub Pages); the URLs carry only the version, the previous version (update page) and b=firefox.
 
 Local files: Firefox does not expose file:// URLs to webRequest or to extension pages, so local PDFs stay in Firefox's viewer. Users can open one in Nivra by dropping it on the popup (read as a File and handed to the viewer through IndexedDB).
 

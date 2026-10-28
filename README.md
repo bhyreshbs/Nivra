@@ -21,12 +21,12 @@ After installing, turn on **Allow access to file URLs** for Nivra on your browse
 
 **Firefox:** allow Nivra's site access when the popup asks (or in `about:addons` → Nivra → Permissions) so PDF links open in Nivra. Firefox does not let add-ons open files from your computer, so local PDFs (`file://`) stay in Firefox's own viewer; to read one in Nivra, drop it on the Nivra popup.
 
-**Highlights (v1.7.0)**
+**Highlights (v1.7.1)**
 
 - Automatic PDF redirection on Microsoft Edge, Chrome and Opera, for web `.pdf` links and local `file://` PDFs, with a fallback for when Edge's or Opera's own viewer wins the race
 - A Firefox build that redirects web `.pdf` links (local files stay in Firefox's viewer; drop them on the popup instead)
 - A setup window right after install that stays red until "Allow access to file URLs" (Firefox: site access) is on, a red "!" badge on the toolbar icon while it is off, and a red banner in the popup, and browser-aware wording (Edge, Chrome, Opera or Firefox); on Firefox it asks for site access instead
-- A welcome page on first install and a goodbye page on uninstall (static pages in `docs/`, served by GitHub Pages)
+- A welcome page on first install, an update page (`docs/update.html`, "what's new") after every update, and a goodbye page with a feedback form on uninstall (static pages in `docs/`, served by GitHub Pages)
 - Smart Dark that keeps photos, charts and diagrams in their real colours (pages *and* sidebar thumbnails)
 - Profiles (Reading, Night, Study, Focus, Original) and a "Remember for this site" look per website
 - Settings that persist: mode, brightness, contrast, zoom, sidebar, two-page view, toolbar state
@@ -181,8 +181,9 @@ cd Nivra
 npm install
 npm run build        # Tailwind CSS + copy PDF.js, fonts and decoders
 npm test             # unit tests
-npm run package      # creates dist/ and nivra-<version>.zip (Edge, Chrome)
+npm run package      # creates dist/ and nivra-chromium-<version>.zip (Edge, Chrome and other Chromium browsers)
 npm run package:opera    # creates dist-opera/ and nivra-opera-<version>.zip (Opera: fonts/CMaps base64-encoded)
+npm run package:all      # builds all three store zips (chromium, opera, firefox) in one go
 npm run package:firefox  # creates dist-firefox/ and nivra-firefox-<version>.zip (Firefox)
 node tests/baseline-check.js  # confirms the Chromium package only changed where you expected
 ```
@@ -289,7 +290,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.7.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge and Opera PDF fallback, Firefox build, install/uninstall pages. Every browser ships the same version number. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera v1.7.0 is submitted and awaiting moderation, and a Firefox build is ready for AMO; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.7.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge and Opera PDF fallback, Firefox build, install/uninstall pages. Every browser ships the same version number. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera v1.7.0 is submitted and awaiting moderation, and a Firefox build is ready for AMO; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 

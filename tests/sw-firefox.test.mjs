@@ -171,13 +171,13 @@ test('fresh install stores enabled=true, opens welcome and sets the uninstall pa
   assert.equal(listeners.uninstallUrl, 'https://bhyreshbs.github.io/Nivra/goodbye.html?v=9.9.9&b=firefox');
 });
 
-test('update keeps a stored false and opens no tab', async () => {
+test('update keeps a stored false and opens the update page only', async () => {
   store.nivraEnabled = false;
   created.length = 0;
   windows.length = 0;
-  await listeners.installed({ reason: 'update' });
+  await listeners.installed({ reason: 'update', previousVersion: '1.7.0' });
   assert.equal(store.nivraEnabled, false);
-  assert.deepEqual(created, []);
+  assert.deepEqual(created, ['https://bhyreshbs.github.io/Nivra/update.html?v=9.9.9&b=firefox&from=1.7.0']);
   assert.equal(windows.length, 0, 'no setup window on update');
   assert.equal(await bg.isEnabled(), false);
 });

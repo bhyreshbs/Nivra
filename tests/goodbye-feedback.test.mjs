@@ -21,7 +21,7 @@ function page({ key = '', fetchImpl = null, message = 'It crashed', email = '' }
   el['fb-email'].value = email;
   const src = feedback.replace(/var FEEDBACK_KEY = '[^']*';/, `var FEEDBACK_KEY = '${key}';`);
   vm.runInNewContext(src, {
-    document: { getElementById: get }, location: { search: '?v=1.7.0&b=opera' },
+    document: { getElementById: get }, location: { search: '?v=1.7.1&b=opera' },
     URLSearchParams, navigator: {}, fetch: fetchImpl, encodeURIComponent, setTimeout,
   });
   return { el, submit: () => el.fb._l.submit({ preventDefault() {} }) };
@@ -42,7 +42,7 @@ test('without a key it prepares mail app, Gmail and copy options', () => {
   assert.ok(mail.startsWith('mailto:support@bhyresh.me?subject='));
   const body = decodeURIComponent(mail.split('&body=')[1]);
   assert.match(body, /It crashed/);
-  assert.match(body, /Nivra 1\.7\.0 \/ opera/);
+  assert.match(body, /Nivra 1\.7\.1 \/ opera/);
   assert.match(body, /Reply to: me@example\.com/);
   assert.ok(p.el['fb-gmail'].href.startsWith('https://mail.google.com/mail/?view=cm'));
 });

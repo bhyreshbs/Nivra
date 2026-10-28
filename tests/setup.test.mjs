@@ -13,7 +13,7 @@ function loadSw({ fileAccess, ua = 'Mozilla/5.0 Chrome/147.0 Safari/537.36' }) {
   const calls = { windows: [], tabs: [], badge: [], badgeColor: [] };
   const chrome = {
     runtime: {
-      getURL: p => `chrome-extension://id/${p}`, getManifest: () => ({ version: '1.7.0' }),
+      getURL: p => `chrome-extension://id/${p}`, getManifest: () => ({ version: '1.7.1' }),
       setUninstallURL() {}, onInstalled: on('installed'), onStartup: on('startup'), onMessage: on('message'),
     },
     storage: { local: { get: async () => ({}), set: async () => {} } },
