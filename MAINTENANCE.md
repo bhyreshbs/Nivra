@@ -40,7 +40,7 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - [ ] Outline tab (on a PDF with bookmarks and one without), search, zoom, fit, two-page view, rotate (button + R)
 - [ ] Print, download transformed copy, document properties
 - [ ] Bottom bar collapse / expand; Appearance button label animation and mode swap
-- [ ] Fresh install opens the welcome page; removing the extension opens the goodbye page (both load from GitHub Pages)
+- [ ] Fresh install opens the welcome page; removing the extension opens the goodbye page (both load from GitHub Pages); the goodbye feedback form sends
 - [ ] Updating from the previous version (load the old build, then the new one, or use the store update) opens `update.html` with the new and old version and the new release highlighted
 - [ ] With "Allow access to file URLs" off, the popup shows a red banner and the toolbar icon has a red "!" badge; with it on, both are gone
 - [ ] Fresh install opens the setup window (`setup/setup.html`): red with "Open Nivra settings" until the switch is on, then it turns green by itself (Firefox: "Allow site access")
@@ -66,13 +66,14 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - Confirm `https://bhyreshbs.github.io/Nivra/privacy.html` loads and shows the current contact address
 - Send a test mail to `support@bhyresh.me` and confirm it arrives
 - Keep `package.json`, `manifest.json` and `manifest.firefox.json` versions identical (and the `v…` label in `popup/popup.html`); `npm run package:firefox` refuses mismatched manifests
-- Confirm `welcome.html` and `goodbye.html` load under `https://bhyreshbs.github.io/Nivra/` (`SITE_URL` in `background/sw.js`)
+- Confirm `welcome.html`, `update.html`, `privacy.html` and `goodbye.html` load under `https://bhyreshbs.github.io/Nivra/` (`SITE_URL` in `background/sw.js`); the first three share one navbar (Welcome / What's new / Privacy), kept identical by `tests/site-nav.test.mjs`
+- Send a test note through the goodbye page's feedback form and confirm it arrives (Web3Forms; the access key is `FEEDBACK_KEY` in `docs/goodbye.html`, and the free plan has monthly limits)
+- Check the latest release is the first entry on `docs/update.html` and in `CHANGELOG.md`
 - Live Edge listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp
 
 ## Releasing an update
 
-1. Bump `version` in `manifest.json`, `manifest.firefox.json`, `package.json` (`npm version X --no-git-tag-version` also fixes `package-lock.json`) and the `v…` label in `popup/popup.html`. **Add the release to `docs/update.html` (top of the list, `data-v` = the version) and `CHANGELOG.md`**: Nivra opens the update page after every update, and `tests/update-page.test.mjs` fails if the newest entry is not the current version. Stay in the 1.7.x series unless told otherwise.
-   (patch `1.7.1` for fixes, minor `1.8.0` for features). Every browser always ships the same version.
+1. Bump `version` in `manifest.json`, `manifest.firefox.json`, `package.json` (`npm version X --no-git-tag-version` also fixes `package-lock.json`) and the `v…` label in `popup/popup.html`. **Add the release to `docs/update.html` (top of the list, `data-v` = the version) and `CHANGELOG.md`**: Nivra opens the update page after every update, and `tests/update-page.test.mjs` fails if the newest entry is not the current version. Every browser always ships the same version, and for now releases stay in the 1.7.x series (next: 1.7.2, 1.7.3, …) unless you decide otherwise. Each new version must be higher than anything already on a store.
 2. `npm test`, `npm run build`, `npm run package:all` (or the three `package*` scripts one by one).
 3. Load `dist/` (Edge), `dist-opera/` (Opera) and `dist-firefox/` (Firefox) and run the checklist above.
 4. Commit, then tag the release: `git tag v<version>`.
@@ -111,6 +112,8 @@ Notes:
 | Store listing text, search terms, certification and reviewer notes (Edge, Opera, AMO) | `STORE_LISTING.md` |
 | Firefox manifest and background script | `manifest.firefox.json`, `background/sw.firefox.js` (Chromium: `manifest.json`, `background/sw.js`) |
 | What's-new page and changelog (opened after every update) | `docs/update.html`, `CHANGELOG.md` |
+| Goodbye-page feedback form (Web3Forms account, key in the page, privacy policy mentions it) | `docs/goodbye.html`, `PRIVACY.md` |
+| Release zips | `nivra-chromium-<version>.zip` (Edge, Chrome), `nivra-opera-<version>.zip`, `nivra-firefox-<version>.zip` + `nivra-source-<version>.zip`; all built by `npm run package:all` |
 | Chromium package baseline | `tests/baseline.json` (`node tests/baseline-check.js --update` after an intended release) |
 | Privacy policy (source and published page) | `PRIVACY.md`, `docs/privacy.html` (GitHub Pages from `/docs`) |
 | Logo, store images, promo tile | `assets/`, `logo.html` (`node make-promo-shot.js` regenerates the helper) |
