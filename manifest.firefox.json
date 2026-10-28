@@ -21,8 +21,8 @@
   },
   "incognito": "spanning",
   "permissions": [
-    "declarativeNetRequest",
-    "declarativeNetRequestWithHostAccess",
+    "webRequest",
+    "webRequestBlocking",
     "storage",
     "activeTab"
   ],
@@ -38,7 +38,7 @@
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self';"
   },
   "background": {
-    "scripts": ["background/sw.js"],
+    "scripts": ["background/sw.firefox.js"],
     "type": "module"
   },
   "icons": {

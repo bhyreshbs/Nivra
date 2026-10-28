@@ -32,6 +32,8 @@ for (const entry of INCLUDE) {
     recursive: true,
     // Source-only files that the extension never loads.
     filter: p => !/[\\/]viewer[\\/]input\.css$/.test(p)
+      // Firefox-only background script (package-firefox.js ships it).
+      && !/[\\/]background[\\/]sw\.firefox\.js$/.test(p)
       && !/\.md$/i.test(p)
       // Inter font package extras the viewer never loads (woff2 is used; legacy woff / scss / typings are not)
       && !/[\\/]fonts[\\/]inter[\\/].*(\.woff$|\.scss$|\.d\.css\.ts$|[\\/]metadata\.json$|[\\/]unicode\.json$|[\\/]package\.json$)/.test(p),

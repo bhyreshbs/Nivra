@@ -37,8 +37,9 @@ for (const entry of INCLUDE) {
   if (!fs.existsSync(src)) throw new Error(`Missing: ${entry} (run "npm run build" first)`);
   fs.cpSync(src, path.join(dist, entry), {
     recursive: true,
-    // Same exclusions as package.js.
+    // Same exclusions as package.js, plus the Chromium service worker (Firefox uses sw.firefox.js).
     filter: p => !/[\\/]viewer[\\/]input\.css$/.test(p)
+      && !/[\\/]background[\\/]sw\.js$/.test(p)
       && !/\.md$/i.test(p)
       && !/[\\/]fonts[\\/]inter[\\/].*(\.woff$|\.scss$|\.d\.css\.ts$|[\\/]metadata\.json$|[\\/]unicode\.json$|[\\/]package\.json$)/.test(p),
   });
