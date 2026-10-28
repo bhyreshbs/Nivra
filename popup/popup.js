@@ -27,10 +27,14 @@ const btnShortcuts  = document.getElementById('btn-keyboard-shortcuts');
 
 const IS_EDGE = /\bEdg\//.test(navigator.userAgent);
 const IS_OPERA = !IS_EDGE && /\bOPR\//.test(navigator.userAgent);
-const BROWSER = IS_EDGE ? 'Edge' : IS_OPERA ? 'Opera' : 'Chrome';
+const IS_FIREFOX = /\bFirefox\//.test(navigator.userAgent);
+const BROWSER = IS_EDGE ? 'Edge' : IS_OPERA ? 'Opera' : IS_FIREFOX ? 'Firefox' : 'Chrome';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const EXTENSION_ID = chrome.runtime.id;
+// Host of the extension's own pages. On Chromium this is the extension id; on Firefox
+// it is a per-install UUID (moz-extension://<uuid>/) that differs from runtime.id.
+const EXTENSION_HOST = new URL(chrome.runtime.getURL('')).host;
 const VIEWER_PATH  = 'viewer/viewer.html';
 
 /**
@@ -38,7 +42,7 @@ const VIEWER_PATH  = 'viewer/viewer.html';
  * Returns the original PDF URL string, or null if not a Nivra viewer page.
  */
 function _extractNivraPdfUrl(tabUrl) {
-  if (!tabUrl || !tabUrl.includes(EXTENSION_ID)) return null;
+  if (!tabUrl || !tabUrl.includes(EXTENSION_HOST)) return null;
   try {
     // Same two forms as viewer.js: literal (redirect rule) or percent-encoded
     // (this popup). URLSearchParams would cut a literal URL at its first "&".
@@ -62,7 +66,7 @@ function _extractNivraPdfUrl(tabUrl) {
  */
 function _isRawPdfUrl(url) {
   if (!url) return false;
-  if (url.includes(EXTENSION_ID)) return false;
+  if (url.includes(EXTENSION_HOST)) return false;
   return /\.pdf(\?[^#]*)?(#.*)?$/i.test(url);
 }
 
@@ -211,13 +215,63 @@ function _openExtensionSettings() {
   });
   window.close();
 }
-btnFileAccess.addEventListener('click', _openExtensionSettings);
+
+// ─── Firefox: site access instead of file-URL access ─────────────────────────
+// Firefox has no "Allow access to file URLs" toggle (the background reports
+// file access as unsupported) and treats host_permissions as opt-in, so nothing
+// is intercepted until the user grants site access. The banner and the File URL
+// Access button are repurposed to show and request that permission.
+const SITE_ORIGINS = (chrome.runtime.getManifest().host_permissions || [])
+  .filter(o => !o.startsWith('file:'));
+
+async function _hasSiteAccess() {
+  try { return await chrome.permissions.contains({ origins: SITE_ORIGINS }); }
+  catch (_) { return false; }
+}
+
+async function _requestSiteAccess() {
+  // Must run straight from the click: permissions.request needs a user gesture.
+  // Firefox may close the popup while its permission prompt is open.
+  let granted = false;
+  try { granted = await chrome.permissions.request({ origins: SITE_ORIGINS }); }
+  catch (err) { console.warn('[Nivra] Site access request failed:', err); }
+  _showFirefoxAccess(granted);
+}
+
+function _showFirefoxAccess(granted) {
+  const banner = document.getElementById('access-banner');
+  const strong = document.createElement('strong');
+  if (granted) {
+    strong.textContent = 'Local PDFs open in Firefox’s viewer.';
+    banner.replaceChildren(strong, ' Firefox does not let add-ons open files from your computer. Drop a PDF onto this popup to read it in Nivra.');
+  } else {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Allow site access';
+    btn.addEventListener('click', _requestSiteAccess);
+    strong.textContent = 'Nivra needs permission to open PDFs.';
+    banner.replaceChildren(strong, ' Allow access to websites so PDF links open in Nivra.',
+      document.createElement('br'), btn);
+  }
+  banner.hidden = false;
+
+  btnFileAccess.querySelector('.action-text-primary').textContent = 'Site Access';
+  document.getElementById('file-access-detail').textContent = granted
+    ? 'PDF links open in Nivra'
+    : 'Allow Nivra to open PDF links';
+}
+
+btnFileAccess.addEventListener('click', () => IS_FIREFOX ? _requestSiteAccess() : _openExtensionSettings());
 document.getElementById('btn-banner-access').addEventListener('click', _openExtensionSettings);
 
 // Local PDFs only work with "Allow access to file URLs"; say so instead of failing silently.
 (async function _checkFileAccess() {
   try {
-    const { allowed } = await chrome.runtime.sendMessage({ type: 'GET_FILE_ACCESS' });
+    const { allowed, unsupported } = await chrome.runtime.sendMessage({ type: 'GET_FILE_ACCESS' });
+    if (unsupported) {
+      _showFirefoxAccess(await _hasSiteAccess());
+      return;
+    }
     document.getElementById('access-banner').hidden = !!allowed;
     if (allowed) document.getElementById('file-access-detail').textContent = 'Local PDF support is on';
   } catch (_) { /* worker unavailable: leave the banner hidden */ }
