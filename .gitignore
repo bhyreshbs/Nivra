@@ -16,3 +16,4 @@ Thumbs.db
 *.log
 .vscode/
 .claude/
+BROWSER_RELEASE_OPTIONS.md
