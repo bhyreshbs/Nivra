@@ -307,6 +307,8 @@
     "transformations/smart-dark/operator-analyzer.js": "cb64062f3fa0c6bf404ba4cffa52cac76f7aab1820ea944337ceec023e458a31",
     "transformations/smart-dark/page-analyzer.js": "e4ed31efbbecf30a9d6d9a42506b8ee40937f9b7ce6cea3905e7581e0849adeb",
     "transformations/visual-engine.js": "9441ce72d6c8e65ba44622e5c565c7a094ff889f94184808912a235baf2568e5",
+    "viewer/binary-data.js": "498907db1753c1cb29eed23ba9d2b0fdbf5eeff18de48e7673754136d0c8cd40",
+    "viewer/build-flags.js": "2e4873488beb4b797da827e6e38a1d3d3e42e9ea5c8caa2c8178d5c9aaf5dfb7",
     "viewer/fonts/inter/100-italic.css": "9b46a5efcaee5c8c2e80ee3f76fa97a426fdf3d629baabe7ad4a4f12a1ea7579",
     "viewer/fonts/inter/100.css": "f41a78c4f55fa3f1a39b694fd56a2457c146a8f1c7f6305a8d8c3a9f8a25c9f0",
     "viewer/fonts/inter/200-italic.css": "d8028b82897bee07d0a78a159c14a668d07a4de11fb0a45bef9ad315530ad631",
@@ -599,6 +601,6 @@
     "viewer/glass.css": "cb0eee6e0bd544ef37dd097b2c1ca4f9345bede4ef4d4d308f61709c3423d769",
     "viewer/viewer.css": "9d068757c1548855beb4783882c2d1506e0f2514eb10bbdba4fcaf7f0f4509d1",
     "viewer/viewer.html": "70b6af1763f43c45b9ad7cef7dedf163b6e03da3f06163e6fbf37e41c2a7cfb8",
-    "viewer/viewer.js": "f6fb2178d84a10256a2713a098f2b28279b040df552be2c78587bd847e80f984"
+    "viewer/viewer.js": "21ae1a0e0aceaa3344d0598366f548356ba25f4f7d903711b4a13034e102472c"
   }
 }

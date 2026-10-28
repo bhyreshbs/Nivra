@@ -7,7 +7,8 @@
     "test": "node --test \"tests/*.test.mjs\"",
     "build": "npx @tailwindcss/cli -i ./viewer/input.css -o ./viewer/viewer.css && node build.js",
     "package": "node package.js",
-    "package:firefox": "node package-firefox.js"
+    "package:firefox": "node package-firefox.js",
+    "package:opera": "node package-opera.js"
   },
   "keywords": [],
   "author": "",

@@ -128,7 +128,7 @@ PDF (online or local)
 Key implementation notes:
 
 - Chrome's native PDF viewer is intercepted via a `declarativeNetRequest` rule that redirects PDF navigations to Nivra's own `viewer.html?file=<url>`, the same general approach used by existing PDF.js-based Chrome extensions.
-- On Microsoft Edge and Opera, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge and Opera, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged. Opera uses the same package as Edge and Chrome.
+- On Microsoft Edge and Opera, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge and Opera, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged. Opera uses the same code as Edge and Chrome, packaged by `package-opera.js`: the Opera store rejects PDF.js's `.pfb`/`.bcmap`/`.icc` files, so its zip stores the fonts and CMaps as base64 text (decoded by `viewer/binary-data.js`) and leaves out the ICC profile.
 - Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `edge://extensions`, `opera://extensions` or `chrome://extensions` — this can't be granted programmatically. The popup shows a banner when it is off, and the welcome page explains it.
 - Firefox has its own build (`npm run package:firefox`, `manifest.firefox.json`, `background/sw.firefox.js`): a blocking `webRequest.onBeforeRequest` listener redirects web PDF navigations. `webRequest` never fires for `file://` and extension pages cannot read `file://` URLs there, so local PDFs are left to Firefox's viewer, the Firefox manifest requests no `file:///` access, and the popup points to drag-and-drop instead of offering "Open in Nivra" on a local tab. Firefox treats MV3 host permissions as opt-in, so the popup shows site-access status and requests it with `permissions.request`.
 - On first install the extension opens `docs/welcome.html`; `setUninstallURL` points at `docs/goodbye.html`. Both are hosted by GitHub Pages (`SITE_URL` in `background/sw.js`) and receive only the version and browser family.
@@ -169,6 +169,7 @@ nivra/
 ├── logo.html             # Logo sheet + promo tile draft (not shipped)
 ├── build.js / package.js # Build dependencies / create the Chromium store zip
 ├── package-firefox.js    # Create the Firefox (AMO) zip
+├── package-opera.js      # Create the Opera zip (Chromium package with encoded PDF.js data)
 ├── PRIVACY.md  STORE_LISTING.md  LICENSE
 ```
 
@@ -180,7 +181,8 @@ cd Nivra
 npm install
 npm run build        # Tailwind CSS + copy PDF.js, fonts and decoders
 npm test             # unit tests
-npm run package      # creates dist/ and nivra-<version>.zip (Edge, Chrome, Opera)
+npm run package      # creates dist/ and nivra-<version>.zip (Edge, Chrome)
+npm run package:opera    # creates dist-opera/ and nivra-opera-<version>.zip (Opera: fonts/CMaps base64-encoded)
 npm run package:firefox  # creates dist-firefox/ and nivra-firefox-<version>.zip (Firefox)
 node tests/baseline-check.js  # confirms the Chromium package only changed where you expected
 ```

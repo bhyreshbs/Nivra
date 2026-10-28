@@ -46,10 +46,11 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - [ ] `npm test` passes
 - [ ] `node tests/baseline-check.js` shows only the files you meant to change in the Chromium package (then `--update` it)
 
-**Opera** (load `dist/` on `opera://extensions`):
+**Opera** (`npm run package:opera`, load `dist-opera/` on `opera://extensions`):
 - [ ] A web PDF opens in Nivra; toggling off restores Opera's viewer
 - [ ] A local PDF opens with "Allow access to file URLs" on; the popup banner and "File URL Access" button open `opera://extensions`
 - [ ] Popup says "Opera"; the welcome page names Opera and its cube Extensions button; the goodbye page shows the Opera store line
+- [ ] A PDF with non-embedded standard fonts (e.g. plain Times/Courier text) and a CJK PDF render correctly: they use the base64-encoded fonts and CMaps
 
 **Firefox** (`npm run package:firefox`, then `npx web-ext run --source-dir dist-firefox`):
 - [ ] `npx web-ext lint --source-dir dist-firefox`: 0 errors (4 known PDF.js warnings)
@@ -70,11 +71,11 @@ Load `dist/` unpacked (`npm run package` first), then check:
 
 1. Bump `version` in `manifest.json`, `manifest.firefox.json` and `package.json`
    (patch `1.7.1` for fixes, minor `1.8.0` for features). Every browser always ships the same version.
-2. `npm test`, `npm run build`, `npm run package`, `npm run package:firefox`.
-3. Load `dist/` (Edge, Opera) and `dist-firefox/` (Firefox) and run the checklist above.
+2. `npm test`, `npm run build`, `npm run package`, `npm run package:opera`, `npm run package:firefox`.
+3. Load `dist/` (Edge), `dist-opera/` (Opera) and `dist-firefox/` (Firefox) and run the checklist above.
 4. Commit, then tag the release: `git tag v<version>`.
 5. **Edge:** Partner Center → the extension → **Update** → upload `nivra-<version>.zip`, update the listing text/screenshots if anything visible changed, add certification notes (see `STORE_LISTING.md`), then submit.
-6. **Opera:** addons.opera.com developer dashboard → Nivra → upload the same `nivra-<version>.zip` as a new version.
+6. **Opera:** addons.opera.com developer dashboard → Nivra → upload `nivra-opera-<version>.zip` as a new version (not the Edge zip: Opera rejects PDF.js's raw font/CMap files).
 7. **Firefox:** build the upload from the tagged source (not the working copy; see "Firefox Add-ons" in `STORE_LISTING.md` for why and the exact commands), then AMO → Nivra → **Upload New Version** → `nivra-firefox-<version>.zip` plus `nivra-source-<version>.zip`, with the reviewer notes.
 8. Push: `git push && git push --tags`.
 

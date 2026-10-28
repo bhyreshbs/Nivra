@@ -5,7 +5,7 @@ Live listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaem
 | Store | Status | Upload |
 |---|---|---|
 | Microsoft Edge Add-ons | Published | `nivra-<version>.zip` (`npm run package`) |
-| Opera Add-ons | Ready to submit | `nivra-<version>.zip` (`npm run package`), same package as Edge |
+| Opera Add-ons | Ready to submit | `nivra-opera-<version>.zip` (`npm run package:opera`) |
 | Firefox Add-ons (AMO) | Ready to submit | `nivra-firefox-<version>.zip` (`npm run package:firefox`) + source zip |
 | Chrome Web Store | Coming soon | `nivra-<version>.zip` |
 
@@ -64,11 +64,13 @@ To test: open any https://…/file.pdf link — it should open in Nivra. Toggle 
 
 ## Opera Add-ons (addons.opera.com)
 
-Free. Sign in at https://addons.opera.com/developer/, **Upload new extension**, choose `nivra-<version>.zip` (the same Chromium package as Edge).
+Free. Sign in at https://addons.opera.com/developer/, **Upload new extension**, choose `nivra-opera-<version>.zip` from `npm run package:opera`.
+
+- **Why a separate zip:** Opera's uploader rejects some binary file types PDF.js ships ("Invalid type on file: pdfjs/web/standard_fonts/FoxitDingbats.pfb"). The Opera package is the Chromium package with PDF.js's standard fonts and CMaps stored as base64 text (`<file>.txt`, decoded by `viewer/binary-data.js`) and the CMYK ICC profile left out (PDF.js then uses its built-in CMYK conversion). Do not upload `nivra-<version>.zip` to Opera.
 
 - Before uploading, check Opera's Chromium version (`opera://about`) is at least `minimum_chrome_version` in `manifest.json` (147). If Opera is behind, Opera users cannot install it; wait, or lower the minimum in a separate Chromium release after testing.
 - Screenshots: 1280×800 (reuse the Edge ones). Icon: `assets/nivra-300.png` scaled as requested.
-- Opera may ask for sources of minified code: the only minified-looking files are PDF.js (`pdfjs/`, unmodified `pdfjs-dist@6.2.108` from npm) and the Tailwind output `viewer/viewer.css` (from `viewer/input.css`). Point them to the GitHub repo and the build steps in the Firefox section below.
+- Opera may ask for sources of minified code: the only minified-looking files are PDF.js (`pdfjs/`, unmodified `pdfjs-dist@6.2.108` from npm; fonts and CMaps base64-encoded by `package-opera.js`) and the Tailwind output `viewer/viewer.css` (from `viewer/input.css`). Point them to the GitHub repo and `npm ci && npm run build && npm run package:opera`.
 
 **Notes for the moderator (paste)**
 Nivra replaces Opera's built-in PDF viewer by redirecting navigations to .pdf URLs (declarativeNetRequest) to its own viewer page, which renders the file with a bundled, unmodified copy of PDF.js (Apache-2.0). Because Opera's own viewer can win the race against that rule, a `tabs.onUpdated` listener (no extra permission) redirects tabs that still show a .pdf URL. `host_permissions` are limited to URLs ending in .pdf (http, https, file) — needed to read the document. `storage` holds user settings; `activeTab` lets the popup detect a PDF in the current tab. `wasm-unsafe-eval` in the CSP is required by PDF.js's WebAssembly image decoders. No remote code, no analytics. The welcome and uninstall pages are static pages on bhyreshbs.github.io/Nivra and receive only the version and `b=opera`.
@@ -133,4 +135,4 @@ To test: allow site access from the toolbar popup when prompted, then open any h
 Privacy policy URL: https://bhyreshbs.github.io/Nivra/privacy.html
 Website URL (optional): https://bhyresh.me
 Support contact (optional): support@bhyresh.me (forwards to the owner's inbox; do not use a personal address)
-Logo: `assets/nivra-300.png` (300×300). Rebuild before uploading: `npm run build && npm run package` (Edge, Opera) or `npm run build && npm run package:firefox` (Firefox).
+Logo: `assets/nivra-300.png` (300×300). Rebuild before uploading: `npm run build` then `npm run package` (Edge), `npm run package:opera` (Opera) or `npm run package:firefox` (Firefox).

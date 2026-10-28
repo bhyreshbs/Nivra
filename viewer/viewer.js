@@ -45,6 +45,7 @@ import {
   loadPrefs, savePrefs, PROFILES, getSiteAppearance, setSiteAppearance,
 } from '../settings/preferences.js';
 import { takeFile } from '../settings/handoff.js';
+import { binaryDataOptions } from './binary-data.js';
 
 // ─── PDF.js worker ────────────────────────────────────────────────────────────
 pdfjsLib.GlobalWorkerOptions.workerSrc = '../pdfjs/build/pdf.worker.mjs';
@@ -472,13 +473,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       // around in a document's fonts (e.g. "TT: undefined function: 22"), which Chrome
       // and Edge then list under the extension's Errors. They are harmless.
       verbosity:           pdfjsLib.VerbosityLevel.ERRORS,
-      standardFontDataUrl: pdfjsUrl + 'web/standard_fonts/',
-      cMapUrl:             pdfjsUrl + 'web/cmaps/',
-      cMapPacked:          true,
-      // WASM image/colour decoders + CMYK ICC profile (copied by build.js).
-      // Without these, JPEG2000 / JBIG2 images render blank and ICC colours are off.
-      wasmUrl:             pdfjsUrl + 'web/wasm/',
-      iccUrl:              pdfjsUrl + 'web/iccs/',
+      // Fonts, CMaps, WASM decoders, ICC profile (see binary-data.js for the Opera layout).
+      ...binaryDataOptions(pdfjsUrl),
     });
 
     // Tell visual engine which document is loaded (clears operator cache, etc.)
