@@ -2,7 +2,7 @@
 
 **Make documents easier on your eyes.**
 
-Nivra is a local-first browser extension (Microsoft Edge, Chrome and other Chromium browsers) that replaces the standard PDF viewing experience with a real-time visual transformation layer — Smart Dark, True Invert, Grayscale, High Contrast, Brightness, and Contrast — without ever modifying the original file.
+Nivra is a local-first browser extension (Microsoft Edge, Chrome, Opera and other Chromium browsers, plus a Firefox build) that replaces the standard PDF viewing experience with a real-time visual transformation layer — Smart Dark, True Invert, Grayscale, High Contrast, Brightness, and Contrast — without ever modifying the original file.
 
 > Open. Transform. Read.
 > No upload. No conversion. No modification.
@@ -23,8 +23,9 @@ After installing, turn on **Allow access to file URLs** for Nivra on your browse
 
 **Highlights (v1.6.1)**
 
-- Automatic PDF redirection on Microsoft Edge and Chrome, for web `.pdf` links and local `file://` PDFs, with an Edge-specific fallback for when Edge's own viewer wins the race
-- A popup banner that tells you when "Allow access to file URLs" is off, and browser-aware wording (Edge or Chrome)
+- Automatic PDF redirection on Microsoft Edge, Chrome and Opera, for web `.pdf` links and local `file://` PDFs, with a fallback for when Edge's or Opera's own viewer wins the race
+- A Firefox build that redirects web `.pdf` links (local files stay in Firefox's viewer; drop them on the popup instead)
+- A popup banner that tells you when "Allow access to file URLs" is off, and browser-aware wording (Edge, Chrome, Opera or Firefox); on Firefox it asks for site access instead
 - A welcome page on first install and a goodbye page on uninstall (static pages in `docs/`, served by GitHub Pages)
 - Smart Dark that keeps photos, charts and diagrams in their real colours (pages *and* sidebar thumbnails)
 - Profiles (Reading, Night, Study, Focus, Original) and a "Remember for this site" look per website
@@ -127,9 +128,9 @@ PDF (online or local)
 Key implementation notes:
 
 - Chrome's native PDF viewer is intercepted via a `declarativeNetRequest` rule that redirects PDF navigations to Nivra's own `viewer.html?file=<url>`, the same general approach used by existing PDF.js-based Chrome extensions.
-- On Microsoft Edge, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged.
-- Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `edge://extensions` or `chrome://extensions` — this can't be granted programmatically. The popup shows a banner when it is off, and the welcome page explains it.
-- Firefox has its own build (`npm run package:firefox`, `manifest.firefox.json`, `background/sw.firefox.js`): a blocking `webRequest.onBeforeRequest` listener redirects web PDF navigations. `webRequest` never fires for `file://` and extension pages cannot read `file://` URLs there, so local PDFs are left to Firefox's viewer, the Firefox manifest requests no `file:///` access, and the popup points to drag-and-drop instead of offering "Open in Nivra" on a local tab.
+- On Microsoft Edge and Opera, where the built-in viewer can win the race against the redirect rule, a `tabs.onUpdated` fallback (gated to Edge and Opera, no extra permission) redirects any tab still showing a `.pdf` URL. The Chrome path is unchanged. Opera uses the same package as Edge and Chrome.
+- Local file support requires the user to manually enable **"Allow access to file URLs"** for the extension in `edge://extensions`, `opera://extensions` or `chrome://extensions` — this can't be granted programmatically. The popup shows a banner when it is off, and the welcome page explains it.
+- Firefox has its own build (`npm run package:firefox`, `manifest.firefox.json`, `background/sw.firefox.js`): a blocking `webRequest.onBeforeRequest` listener redirects web PDF navigations. `webRequest` never fires for `file://` and extension pages cannot read `file://` URLs there, so local PDFs are left to Firefox's viewer, the Firefox manifest requests no `file:///` access, and the popup points to drag-and-drop instead of offering "Open in Nivra" on a local tab. Firefox treats MV3 host permissions as opt-in, so the popup shows site-access status and requests it with `permissions.request`.
 - On first install the extension opens `docs/welcome.html`; `setUninstallURL` points at `docs/goodbye.html`. Both are hosted by GitHub Pages (`SITE_URL` in `background/sw.js`) and receive only the version and browser family.
 - The PDF.js text layer is used as-is for selection/search — it's not something Nivra needs to build itself.
 - "Smart Dark" (background/text vs. photo/chart differentiation) has no off-the-shelf solution; see [Development Roadmap, Phase 4](#development-roadmap) — treat this as an R&D track, not a v1 blocker.
@@ -153,19 +154,21 @@ No backend, database, or cloud infrastructure is required for core functionality
 
 ```
 nivra/
-├── manifest.json
+├── manifest.json         # Chromium manifest (Edge, Chrome, Opera)
+├── manifest.firefox.json # Firefox manifest (shipped as manifest.json by package-firefox.js)
 ├── _locales/en/          # Store name + description (messages.json)
-├── background/           # MV3 service worker: PDF interception (declarativeNetRequest)
+├── background/           # PDF interception: sw.js (Chromium, declarativeNetRequest), sw.firefox.js (Firefox, webRequest)
 ├── popup/                # Toolbar popup: on/off, open-a-PDF drop zone, shortcuts
 ├── viewer/               # PDF viewer UI: viewer.html / viewer.js / glass.css / input.css
 ├── pdfjs/                # PDF.js build, fonts, cmaps, WASM decoders (copied by build.js)
 ├── transformations/      # Visual engine, Smart Dark (smart-dark/), print/export renderer
 ├── settings/             # Preferences, profiles, per-site looks, popup→viewer file hand-off
 ├── tests/                # node --test unit tests
-├── docs/                 # privacy.html (published with GitHub Pages)
+├── docs/                 # privacy, welcome and goodbye pages (published with GitHub Pages)
 ├── assets/               # Icons and logo
 ├── logo.html             # Logo sheet + promo tile draft (not shipped)
-├── build.js / package.js # Build dependencies / create the store zip
+├── build.js / package.js # Build dependencies / create the Chromium store zip
+├── package-firefox.js    # Create the Firefox (AMO) zip
 ├── PRIVACY.md  STORE_LISTING.md  LICENSE
 ```
 
@@ -177,17 +180,21 @@ cd Nivra
 npm install
 npm run build        # Tailwind CSS + copy PDF.js, fonts and decoders
 npm test             # unit tests
-npm run package      # creates dist/ and nivra-<version>.zip for the store
+npm run package      # creates dist/ and nivra-<version>.zip (Edge, Chrome, Opera)
+npm run package:firefox  # creates dist-firefox/ and nivra-firefox-<version>.zip (Firefox)
+node tests/baseline-check.js  # confirms the Chromium package only changed where you expected
 ```
 
 Then load it:
 
-1. Go to `edge://extensions` (or `chrome://extensions`)
+1. Go to `edge://extensions` (or `chrome://extensions`, `opera://extensions`)
 2. Enable **Developer mode**
 3. Click **Load unpacked**
 4. Select the `dist/` folder (created by `npm run package`)
 
 To open PDFs saved on your computer by double-clicking, also enable **"Allow access to file URLs"** on the extension's card. Without it you can still open a local PDF by dropping it on the Nivra popup.
+
+**Firefox:** run `npm run package:firefox`, then either `npx web-ext run --source-dir dist-firefox` (opens a temporary Firefox profile with Nivra loaded), or go to `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → pick `dist-firefox/manifest.json`. Click the Nivra icon and choose **Allow site access**. Firefox 140 or newer is required. Check the package with `npx web-ext lint --source-dir dist-firefox` (expected: 0 errors, 4 warnings inside PDF.js).
 
 ## Development Roadmap
 
@@ -280,7 +287,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge PDF fallback, install/uninstall pages. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge PDF fallback, install/uninstall pages. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera support and a Firefox build are ready for their stores; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 

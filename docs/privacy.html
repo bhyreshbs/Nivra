@@ -26,8 +26,8 @@
   <header class="hero">
     <span class="eyebrow rise"><i></i> On-device · No tracking</span>
     <h1 class="rise d1">Privacy Policy</h1>
-    <p class="lead rise d2">Nivra is a PDF viewer extension for Microsoft Edge and Chromium browsers. It is built to work entirely on your device.</p>
-    <p class="meta rise d3">Last updated: 18 October 2026</p>
+    <p class="lead rise d2">Nivra is a PDF viewer extension for Microsoft Edge, Opera, Firefox and other Chromium browsers. It is built to work entirely on your device.</p>
+    <p class="meta rise d3">Last updated: 28 October 2026</p>
   </header>
 
   <h2>What Nivra does with your documents</h2>
@@ -39,7 +39,7 @@
   </ul>
 
   <h2>What Nivra stores</h2>
-  <p class="section-sub">Nivra saves a few settings in your browser (<code>chrome.storage.local</code>): whether Nivra is turned on, your display mode, brightness, contrast, zoom, sidebar and toolbar state, and, if you tick "Remember for this site", the appearance chosen for that website's hostname. This data stays on your device. It is not synced or transmitted. Removing the extension deletes it.</p>
+  <p class="section-sub">Nivra saves a few settings in your browser (<code>chrome.storage.local</code>, <code>browser.storage.local</code> in Firefox): whether Nivra is turned on, your display mode, brightness, contrast, zoom, sidebar and toolbar state, and, if you tick "Remember for this site", the appearance chosen for that website's hostname. This data stays on your device. It is not synced or transmitted. Removing the extension deletes it.</p>
 
   <h2>What Nivra does not do</h2>
   <ul class="ticks no">
@@ -49,9 +49,10 @@
   </ul>
 
   <h2>Install and uninstall pages</h2>
-  <p class="section-sub">After you install Nivra, it opens a welcome page; when you remove it, your browser opens a goodbye page. Both are static pages on this site. The address carries only the Nivra version and your browser family (Edge or Chrome). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.</p>
+  <p class="section-sub">After you install Nivra, it opens a welcome page; when you remove it, your browser opens a goodbye page. Both are static pages on this site. The address carries only the Nivra version and your browser family (Edge, Chrome, Opera or Firefox). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.</p>
 
   <h2>Permissions</h2>
+  <p class="section-sub"><strong>Microsoft Edge, Opera, Chrome and other Chromium browsers</strong></p>
   <div class="table-wrap">
     <table>
       <tr><th>Permission</th><th>Why</th></tr>
@@ -61,6 +62,17 @@
       <tr><td><code>activeTab</code></td><td>Let the toolbar popup see whether the current tab is a PDF so it can offer "Open in Nivra".</td></tr>
     </table>
   </div>
+  <p class="section-sub"><strong>Firefox</strong></p>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Permission</th><th>Why</th></tr>
+      <tr><td><code>webRequest</code> / <code>webRequestBlocking</code></td><td>Redirect navigations to PDF files into Nivra's viewer while Nivra is switched on. No other requests are changed.</td></tr>
+      <tr><td>Host access to <code>*.pdf</code> web URLs</td><td>Detect PDF addresses and read the PDF to display it. Firefox asks you to allow this; Nivra does not request access to other pages or to files on your computer.</td></tr>
+      <tr><td><code>storage</code></td><td>Save the settings listed above.</td></tr>
+      <tr><td><code>activeTab</code></td><td>Let the toolbar popup see whether the current tab is a PDF so it can offer "Open in Nivra".</td></tr>
+    </table>
+  </div>
+  <p class="section-sub">Firefox does not let add-ons open files from your computer, so local PDFs stay in Firefox's own viewer unless you drop one on the Nivra popup.</p>
 
   <h2>Contact</h2>
   <p class="section-sub">Questions about this policy: <code id="addr">support@bhyresh.me</code>

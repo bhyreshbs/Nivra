@@ -39,12 +39,12 @@
 
   <ol class="steps">
     <li><strong>Open any PDF.</strong> Links and web addresses ending in <code>.pdf</code> open in Nivra automatically. Switch modes from the bar at the bottom of the viewer.</li>
-    <li><strong>Turn on local PDFs.</strong> Open <code id="ext-url">your browser's extensions page</code><button type="button" class="mini" id="copy-url">copy</button>, click <strong>Details</strong> on Nivra, then switch on <strong>Allow access to file URLs</strong>.
+    <li id="step-local"><strong>Turn on local PDFs.</strong> Open <code id="ext-url">your browser's extensions page</code><button type="button" class="mini" id="copy-url">copy</button>, click <strong>Details</strong> on Nivra, then switch on <strong>Allow access to file URLs</strong>.
       <div class="meta">Browsers block links to that page, so paste it into the address bar.</div></li>
     <li><strong>Pin the icon.</strong> Click the <span id="ext-icon">puzzle-piece</span> button in the toolbar and pin Nivra. Its popup holds the on/off switch; off hands PDFs back to <span class="br-name">your browser</span>'s own viewer.</li>
   </ol>
 
-  <div class="callout"><b>Tip</b><span>Prefer not to change any setting? Click the Nivra icon and drop a PDF straight onto the popup. It works without file access.</span></div>
+  <div class="callout"><b>Tip</b><span id="tip">Prefer not to change any setting? Click the Nivra icon and drop a PDF straight onto the popup. It works without file access.</span></div>
 
   <h2>What you get</h2>
   <div class="grid">
@@ -54,31 +54,47 @@
   </div>
 
   <h2>Help</h2>
-  <p class="section-sub">Questions or something not working? Write to <a href="mailto:support@bhyresh.me">support@bhyresh.me</a>. Read the <a href="privacy.html">privacy policy</a>. Nivra on <a href="https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp">Microsoft Edge Add-ons</a>; other browsers coming soon.</p>
+  <p class="section-sub">Questions or something not working? Write to <a href="mailto:support@bhyresh.me">support@bhyresh.me</a>. Read the <a href="privacy.html">privacy policy</a>. Nivra on <a href="https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp">Microsoft Edge Add-ons</a>; Firefox, Opera and Chrome coming soon.</p>
 
   <footer>Nivra · Built by <a href="https://bhyresh.me">Bhyresh</a></footer>
 </main>
 
 <script>
   (function () {
+    // The extension adds ?b=edge|opera|firefox|chrome; the user agent is the fallback
+    // (and still tells Vivaldi and Brave apart, which report themselves as Chrome).
+    var b = new URLSearchParams(location.search).get('b');
     var ua = navigator.userAgent, url = 'chrome://extensions', name = 'Chrome';
-    if (/\bEdg\//.test(ua))      { url = 'edge://extensions';  name = 'Edge'; }
-    else if (/\bOPR\//.test(ua)) {
+    if (b === 'edge' || (!b && /\bEdg\//.test(ua))) { url = 'edge://extensions'; name = 'Edge'; }
+    else if (b === 'opera' || (!b && /\bOPR\//.test(ua))) {
       url = 'opera://extensions'; name = 'Opera';
       // Opera's toolbar shows extensions behind a cube icon, not a puzzle piece.
       document.getElementById('ext-icon').textContent = 'cube (Extensions)';
     }
+    else if (b === 'firefox' || (!b && /\bFirefox\//.test(ua))) {
+      url = ''; name = 'Firefox';
+      // Firefox: no file-URL toggle; site access is granted from the popup instead,
+      // and local PDFs stay in Firefox's viewer.
+      document.getElementById('step-local').innerHTML =
+        '<strong>Allow site access.</strong> Click the Nivra icon and choose <strong>Allow site access</strong>, ' +
+        'so PDF links open in Nivra. You can also do it in <code>about:addons</code> → Nivra → <strong>Permissions</strong>.' +
+        '<div class="meta">Firefox keeps PDFs saved on your computer in its own viewer.</div>';
+      document.getElementById('tip').textContent =
+        'To read a PDF from your computer in Nivra, click the Nivra icon and drop the file onto the popup.';
+    }
     else if (/Vivaldi/.test(ua)) { url = 'vivaldi://extensions'; name = 'Vivaldi'; }
     var apply = function () {
-      document.getElementById('ext-url').textContent = url;
+      var ext = document.getElementById('ext-url');
+      if (ext) ext.textContent = url;
       Array.prototype.forEach.call(document.querySelectorAll('.br-name'), function (el) { el.textContent = name; });
     };
     apply();
     // Brave reports itself as Chrome, so it is detected separately.
-    if (navigator.brave && navigator.brave.isBrave) {
+    if (name === 'Chrome' && navigator.brave && navigator.brave.isBrave) {
       navigator.brave.isBrave().then(function (yes) { if (yes) { url = 'brave://extensions'; name = 'Brave'; apply(); } });
     }
-    document.getElementById('copy-url').addEventListener('click', function (e) {
+    var copy = document.getElementById('copy-url');
+    if (copy) copy.addEventListener('click', function (e) {
       var b = e.currentTarget;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function () {

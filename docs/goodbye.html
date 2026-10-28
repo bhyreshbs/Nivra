@@ -48,10 +48,11 @@
   <footer>Nivra · Built by <a href="https://bhyresh.me">Bhyresh</a></footer>
 </main>
 <script>
-  // The extension adds ?b=edge|opera|chrome; fall back to the user agent if it is missing.
+  // The extension adds ?b=edge|opera|firefox|chrome; fall back to the user agent if it is missing.
   (function () {
+    var ua = navigator.userAgent;
     var b = new URLSearchParams(location.search).get('b');
-    if (!b) b = /\bEdg\//.test(navigator.userAgent) ? 'edge' : /\bOPR\//.test(navigator.userAgent) ? 'opera' : 'chrome';
+    if (!b) b = /\bEdg\//.test(ua) ? 'edge' : /\bOPR\//.test(ua) ? 'opera' : /\bFirefox\//.test(ua) ? 'firefox' : 'chrome';
     var el = document.getElementById('store');
     if (b === 'edge') {
       el.textContent = '';
@@ -61,6 +62,8 @@
       el.appendChild(a);
     } else if (b === 'opera') {
       el.textContent = 'the Opera add-ons store (coming soon)';
+    } else if (b === 'firefox') {
+      el.textContent = 'Firefox Add-ons (coming soon)';
     } else if (b === 'chrome') {
       el.textContent = 'the Chrome Web Store (coming soon)';
     }

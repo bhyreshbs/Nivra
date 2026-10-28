@@ -25,9 +25,11 @@ After a PDF.js upgrade, open several different PDFs: a text document with an out
 ### 2. Watch for platform changes
 - Chrome Extensions "What's new" and the Manifest V3 / `declarativeNetRequest` notes
 - Microsoft Edge Add-ons developer policies
+- Opera: its Chromium version (`opera://about`) must stay at or above `minimum_chrome_version` in `manifest.json`
+- Firefox: the Extension Workshop blog and AMO policies (blocking `webRequest` in MV3, host-permission prompts, `data_collection_permissions`), and the current ESR (bump `strict_min_version` in `manifest.firefox.json` only when needed)
 - Anything that changes how PDF navigations are handled or how file URLs are permitted
 
-### 3. Test checklist (≈20 min, in Edge and Chrome)
+### 3. Test checklist (≈20 min in Edge and Chrome, plus ≈10 min each in Opera and Firefox)
 Load `dist/` unpacked (`npm run package` first), then check:
 
 - [ ] A web PDF opens in Nivra; turning Nivra off in the popup restores the browser viewer
@@ -42,27 +44,44 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - [ ] With "Allow access to file URLs" off, the popup shows the banner; with it on, the banner is gone
 - [ ] No red errors in the viewer console (F12) and none under the extension's Errors on `edge://extensions`
 - [ ] `npm test` passes
+- [ ] `node tests/baseline-check.js` shows only the files you meant to change in the Chromium package (then `--update` it)
+
+**Opera** (load `dist/` on `opera://extensions`):
+- [ ] A web PDF opens in Nivra; toggling off restores Opera's viewer
+- [ ] A local PDF opens with "Allow access to file URLs" on; the popup banner and "File URL Access" button open `opera://extensions`
+- [ ] Popup says "Opera"; the welcome page names Opera and its cube Extensions button; the goodbye page shows the Opera store line
+
+**Firefox** (`npm run package:firefox`, then `npx web-ext run --source-dir dist-firefox`):
+- [ ] `npx web-ext lint --source-dir dist-firefox`: 0 errors (4 known PDF.js warnings)
+- [ ] Popup asks for site access; after "Allow site access" a web PDF opens in Nivra
+- [ ] Toggling off and reloading gives Firefox's viewer; toggling on with a web PDF tab open moves it into Nivra
+- [ ] A local PDF stays in Firefox's viewer, the popup shows the drop-zone hint, and dropping it on the popup opens it in Nivra
+- [ ] Welcome page shows the Firefox steps; uninstalling opens the goodbye page with the Firefox store line
 
 ### 4. Housekeeping
 - Review store reviews (anything under 3 stars is an early warning) and note repeat complaints
 - Confirm `https://bhyreshbs.github.io/Nivra/privacy.html` loads and shows the current contact address
 - Send a test mail to `support@bhyresh.me` and confirm it arrives
-- Keep `package.json` and `manifest.json` versions identical (and the `v…` label in `popup/popup.html`)
+- Keep `package.json`, `manifest.json` and `manifest.firefox.json` versions identical (and the `v…` label in `popup/popup.html`); `npm run package:firefox` refuses mismatched manifests
 - Confirm `welcome.html` and `goodbye.html` load under `https://bhyreshbs.github.io/Nivra/` (`SITE_URL` in `background/sw.js`)
 - Live Edge listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp
 
 ## Releasing an update
 
-1. Bump `version` in both `manifest.json` and `package.json`
+1. Bump `version` in `manifest.json`, `manifest.firefox.json` and `package.json`
    (patch `1.6.1` for fixes, minor `1.7.0` for features).
-2. `npm test`, `npm run build`, `npm run package`.
-3. Load `dist/` and run the checklist above.
-4. Partner Center → the extension → **Update** → upload `nivra-<version>.zip`, update the listing text/screenshots if anything visible changed, add certification notes (see `STORE_LISTING.md`), then submit.
-5. Commit and push (`git add -A`, `git commit`, `git push`). Tag the release: `git tag v<version> && git push --tags`.
+2. `npm test`, `npm run build`, `npm run package`, `npm run package:firefox`.
+3. Load `dist/` (Edge, Opera) and `dist-firefox/` (Firefox) and run the checklist above.
+4. Commit, then tag the release: `git tag v<version>`.
+5. **Edge:** Partner Center → the extension → **Update** → upload `nivra-<version>.zip`, update the listing text/screenshots if anything visible changed, add certification notes (see `STORE_LISTING.md`), then submit.
+6. **Opera:** addons.opera.com developer dashboard → Nivra → upload the same `nivra-<version>.zip` as a new version.
+7. **Firefox:** build the upload from the tagged source (not the working copy; see "Firefox Add-ons" in `STORE_LISTING.md` for why and the exact commands), then AMO → Nivra → **Upload New Version** → `nivra-firefox-<version>.zip` plus `nivra-source-<version>.zip`, with the reviewer notes.
+8. Push: `git push && git push --tags`.
 
 Notes:
 - Do not resubmit while a version is in review; it restarts the review.
-- Partner Center rejects a version number that was already used.
+- Partner Center, Opera and AMO all reject a version number that was already used.
+- AMO reviews each version and may ask for the source zip again; keep the tagged commit.
 - Avoid new permissions. A new permission can disable the extension for existing users until they approve it, and it triggers a fuller review.
 - Never load remote code (scripts, wasm, or `eval`). Everything must ship in the package.
 
@@ -80,14 +99,15 @@ Notes:
 - Local highlights and notes
 - Customisable shortcuts and a settings page
 - Automated viewer tests in a headless browser
-- Firefox build (different manifest and redirect approach)
 - Other formats (EPUB, images)
 
 ## Things to keep in good order
 
 | Item | Where |
 |---|---|
-| Store listing text, search terms, certification notes | `STORE_LISTING.md` |
+| Store listing text, search terms, certification and reviewer notes (Edge, Opera, AMO) | `STORE_LISTING.md` |
+| Firefox manifest and background script | `manifest.firefox.json`, `background/sw.firefox.js` (Chromium: `manifest.json`, `background/sw.js`) |
+| Chromium package baseline | `tests/baseline.json` (`node tests/baseline-check.js --update` after an intended release) |
 | Privacy policy (source and published page) | `PRIVACY.md`, `docs/privacy.html` (GitHub Pages from `/docs`) |
 | Logo, store images, promo tile | `assets/`, `logo.html` (`node make-promo-shot.js` regenerates the helper) |
 | Contact address | `support@bhyresh.me` (Cloudflare Email Routing → owner's inbox) |
