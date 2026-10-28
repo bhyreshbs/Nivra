@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "short_name": "Nivra",
+  "version": "1.6.1",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
+  "author": "Bhyresh BS",
+  "homepage_url": "https://bhyresh.me",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "nivra@bhyresh.me",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "incognito": "spanning",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*/*.pdf*",
+    "*://*/*.PDF*",
+    "*://*/*.Pdf*",
+    "file:///*/*.pdf*",
+    "file:///*/*.PDF*",
+    "file:///*/*.Pdf*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self';"
+  },
+  "background": {
+    "scripts": ["background/sw.js"],
+    "type": "module"
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    },
+    "default_title": "Nivra"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "viewer/viewer.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
