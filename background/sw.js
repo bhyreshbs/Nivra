@@ -29,7 +29,8 @@ const SITE_URL = 'https://bhyreshbs.github.io/Nivra/';
 
 function _sitePage(name) {
   const edge = /\bEdg\//.test(navigator.userAgent);
-  return `${SITE_URL}${name}?v=${chrome.runtime.getManifest().version}&b=${edge ? 'edge' : 'chrome'}`;
+  const opera = !edge && /\bOPR\//.test(navigator.userAgent);
+  return `${SITE_URL}${name}?v=${chrome.runtime.getManifest().version}&b=${edge ? 'edge' : opera ? 'opera' : 'chrome'}`;
 }
 
 function _registerUninstallPage() {
@@ -111,6 +112,10 @@ async function _syncRuleWithStorage() {
 const _isEdge = /\bEdg(e|A|iOS)?\//.test(navigator.userAgent) ||
   !!navigator.userAgentData?.brands?.some(b => b.brand === 'Microsoft Edge');
 
+// Opera is Chromium with the same built-in viewer race and file-URL toggle
+// (opera://extensions), so it reuses the Edge fallback below.
+const _isOpera = !_isEdge && /\bOPR\//.test(navigator.userAgent);
+
 const PDF_URL_RE = /^(https?|file):\/\/[^?#]*\.pdf(?:\?[^#]*)?(?:#.*)?$/i;
 
 function _isFileAccessAllowed() {
@@ -129,7 +134,7 @@ async function _isEnabled() {
   return result[STORAGE_KEY] !== undefined ? result[STORAGE_KEY] : true;
 }
 
-if (_isEdge) {
+if (_isEdge || _isOpera) {
   // Re-assert the rule whenever the worker wakes; idempotent.
   _syncRuleWithStorage().catch(err => console.error('[Nivra SW] Edge rule sync failed:', err));
 

@@ -48,10 +48,10 @@
   <footer>Nivra · Built by <a href="https://bhyresh.me">Bhyresh</a></footer>
 </main>
 <script>
-  // The extension adds ?b=edge|chrome; fall back to the user agent if it is missing.
+  // The extension adds ?b=edge|opera|chrome; fall back to the user agent if it is missing.
   (function () {
     var b = new URLSearchParams(location.search).get('b');
-    if (!b) b = /\bEdg\//.test(navigator.userAgent) ? 'edge' : 'chrome';
+    if (!b) b = /\bEdg\//.test(navigator.userAgent) ? 'edge' : /\bOPR\//.test(navigator.userAgent) ? 'opera' : 'chrome';
     var el = document.getElementById('store');
     if (b === 'edge') {
       el.textContent = '';
@@ -59,6 +59,8 @@
       a.href = 'https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp';
       a.textContent = 'the Microsoft Edge Add-ons store';
       el.appendChild(a);
+    } else if (b === 'opera') {
+      el.textContent = 'the Opera add-ons store (coming soon)';
     } else if (b === 'chrome') {
       el.textContent = 'the Chrome Web Store (coming soon)';
     }

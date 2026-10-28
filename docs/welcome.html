@@ -41,7 +41,7 @@
     <li><strong>Open any PDF.</strong> Links and web addresses ending in <code>.pdf</code> open in Nivra automatically. Switch modes from the bar at the bottom of the viewer.</li>
     <li><strong>Turn on local PDFs.</strong> Open <code id="ext-url">your browser's extensions page</code><button type="button" class="mini" id="copy-url">copy</button>, click <strong>Details</strong> on Nivra, then switch on <strong>Allow access to file URLs</strong>.
       <div class="meta">Browsers block links to that page, so paste it into the address bar.</div></li>
-    <li><strong>Pin the icon.</strong> Click the puzzle-piece button in the toolbar and pin Nivra. Its popup holds the on/off switch; off hands PDFs back to <span class="br-name">your browser</span>'s own viewer.</li>
+    <li><strong>Pin the icon.</strong> Click the <span id="ext-icon">puzzle-piece</span> button in the toolbar and pin Nivra. Its popup holds the on/off switch; off hands PDFs back to <span class="br-name">your browser</span>'s own viewer.</li>
   </ol>
 
   <div class="callout"><b>Tip</b><span>Prefer not to change any setting? Click the Nivra icon and drop a PDF straight onto the popup. It works without file access.</span></div>
@@ -63,7 +63,11 @@
   (function () {
     var ua = navigator.userAgent, url = 'chrome://extensions', name = 'Chrome';
     if (/\bEdg\//.test(ua))      { url = 'edge://extensions';  name = 'Edge'; }
-    else if (/\bOPR\//.test(ua)) { url = 'opera://extensions'; name = 'Opera'; }
+    else if (/\bOPR\//.test(ua)) {
+      url = 'opera://extensions'; name = 'Opera';
+      // Opera's toolbar shows extensions behind a cube icon, not a puzzle piece.
+      document.getElementById('ext-icon').textContent = 'cube (Extensions)';
+    }
     else if (/Vivaldi/.test(ua)) { url = 'vivaldi://extensions'; name = 'Vivaldi'; }
     var apply = function () {
       document.getElementById('ext-url').textContent = url;

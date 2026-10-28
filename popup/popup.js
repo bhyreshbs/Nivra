@@ -26,7 +26,8 @@ const btnFileAccess = document.getElementById('btn-file-access');
 const btnShortcuts  = document.getElementById('btn-keyboard-shortcuts');
 
 const IS_EDGE = /\bEdg\//.test(navigator.userAgent);
-const BROWSER = IS_EDGE ? 'Edge' : 'Chrome';
+const IS_OPERA = !IS_EDGE && /\bOPR\//.test(navigator.userAgent);
+const BROWSER = IS_EDGE ? 'Edge' : IS_OPERA ? 'Opera' : 'Chrome';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const EXTENSION_ID = chrome.runtime.id;
@@ -206,7 +207,7 @@ document.addEventListener('drop', e => e.preventDefault());
 // ─── File URL Access ──────────────────────────────────────────────────────────
 function _openExtensionSettings() {
   chrome.tabs.create({
-    url: `${IS_EDGE ? 'edge' : 'chrome'}://extensions/?id=${EXTENSION_ID}`
+    url: `${IS_EDGE ? 'edge' : IS_OPERA ? 'opera' : 'chrome'}://extensions/?id=${EXTENSION_ID}`
   });
   window.close();
 }
