@@ -69,7 +69,7 @@ Load `dist/` unpacked (`npm run package` first), then check:
 ## Releasing an update
 
 1. Bump `version` in `manifest.json`, `manifest.firefox.json` and `package.json`
-   (patch `1.6.1` for fixes, minor `1.7.0` for features).
+   (patch `1.7.1` for fixes, minor `1.8.0` for features). Every browser always ships the same version.
 2. `npm test`, `npm run build`, `npm run package`, `npm run package:firefox`.
 3. Load `dist/` (Edge, Opera) and `dist-firefox/` (Firefox) and run the checklist above.
 4. Commit, then tag the release: `git tag v<version>`.

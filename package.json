@@ -1,6 +1,6 @@
 {
   "name": "nivra",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Make documents easier on your eyes — a local-first Chrome extension that renders PDFs with real-time dark, invert, grayscale and contrast modes.",
   "private": true,
   "scripts": {

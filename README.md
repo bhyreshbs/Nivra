@@ -21,7 +21,7 @@ After installing, turn on **Allow access to file URLs** for Nivra on your browse
 
 **Firefox:** allow Nivra's site access when the popup asks (or in `about:addons` → Nivra → Permissions) so PDF links open in Nivra. Firefox does not let add-ons open files from your computer, so local PDFs (`file://`) stay in Firefox's own viewer; to read one in Nivra, drop it on the Nivra popup.
 
-**Highlights (v1.6.1)**
+**Highlights (v1.7.0)**
 
 - Automatic PDF redirection on Microsoft Edge, Chrome and Opera, for web `.pdf` links and local `file://` PDFs, with a fallback for when Edge's or Opera's own viewer wins the race
 - A Firefox build that redirects web `.pdf` links (local files stay in Firefox's viewer; drop them on the popup instead)
@@ -287,7 +287,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.6.1 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge PDF fallback, install/uninstall pages. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera support and a Firefox build are ready for their stores; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.7.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge and Opera PDF fallback, Firefox build, install/uninstall pages. Every browser ships the same version number. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera support and a Firefox build are ready for their stores; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 
