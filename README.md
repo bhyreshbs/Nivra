@@ -14,7 +14,7 @@ Nivra is a local-first browser extension (Microsoft Edge, Chrome, Opera and othe
 | Microsoft Edge | Available | [Get Nivra on Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp) |
 | Google Chrome | Coming soon | — |
 | Brave | Coming soon | — |
-| Opera | Coming soon | — |
+| Opera | Awaiting moderation | — |
 | Firefox | Coming soon | — |
 
 After installing, turn on **Allow access to file URLs** for Nivra on your browser's extensions page to open PDFs saved on your computer. A welcome page walks you through it.
@@ -289,7 +289,7 @@ Please open an issue before changing Smart Dark — it needs a design discussion
 
 ## Status
 
-v1.7.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge and Opera PDF fallback, Firefox build, install/uninstall pages. Every browser ships the same version number. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera support and a Firefox build are ready for their stores; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
+v1.7.0 — PDF viewer, all display modes, Smart Dark, profiles, per-site looks, outline, local-file picker, print and transformed download, Edge and Opera PDF fallback, Firefox build, install/uninstall pages. Every browser ships the same version number. Published on the [Microsoft Edge Add-ons store](https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaempmadljlmfplkbalp); Opera v1.7.0 is submitted and awaiting moderation, and a Firefox build is ready for AMO; other browsers coming soon (see `STORE_LISTING.md`; privacy policy in `PRIVACY.md`).
 
 ## License
 

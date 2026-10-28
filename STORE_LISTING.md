@@ -5,7 +5,7 @@ Live listing: https://microsoftedge.microsoft.com/addons/detail/kecobckfpgekkaem
 | Store | Status | Upload |
 |---|---|---|
 | Microsoft Edge Add-ons | Published | `nivra-<version>.zip` (`npm run package`) |
-| Opera Add-ons | Ready to submit | `nivra-opera-<version>.zip` (`npm run package:opera`) |
+| Opera Add-ons | Submitted 28 Oct 2026, awaiting moderation | `nivra-opera-<version>.zip` (`npm run package:opera`) |
 | Firefox Add-ons (AMO) | Ready to submit | `nivra-firefox-<version>.zip` (`npm run package:firefox`) + source zip |
 | Chrome Web Store | Coming soon | `nivra-<version>.zip` |
 
