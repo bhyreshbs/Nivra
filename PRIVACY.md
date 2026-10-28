@@ -18,12 +18,16 @@ Nivra saves a few settings in your browser (`chrome.storage.local`, `browser.sto
 ## What Nivra does not do
 
 - No accounts, analytics, telemetry, advertising or tracking.
-- No data is sold, shared or sent to third parties.
+- No data is sold, shared or sent to third parties, except feedback you choose to send (see below).
 - No remote code is loaded; everything Nivra runs ships inside the extension package.
 
 ## Install and uninstall pages
 
 After you install Nivra, it opens a welcome page; when you remove it, your browser opens a goodbye page. Both are static pages on this site. The address carries only the Nivra version and your browser family (Edge, Chrome, Opera or Firefox). Nothing about you or your documents is sent, and the pages have no analytics. The site host (GitHub Pages) may keep ordinary server logs.
+
+## Feedback you choose to send
+
+The goodbye page has an optional feedback form. If you press **Send feedback**, the reason you pick, your note, and your email address if you add one are sent to us through the Web3Forms service (web3forms.com), which delivers them to our inbox. The message also includes the Nivra version and your browser family. Nothing is sent unless you press the button, and Nivra itself never sends feedback.
 
 ## Permissions
 

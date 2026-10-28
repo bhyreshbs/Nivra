@@ -19,7 +19,7 @@ function page({ key = '', fetchImpl = null, message = 'It crashed', email = '' }
   el['fb-reason'].value = 'Something was broken';
   el['fb-message'].value = message;
   el['fb-email'].value = email;
-  const src = feedback.replace("var FEEDBACK_KEY = '';", `var FEEDBACK_KEY = '${key}';`);
+  const src = feedback.replace(/var FEEDBACK_KEY = '[^']*';/, `var FEEDBACK_KEY = '${key}';`);
   vm.runInNewContext(src, {
     document: { getElementById: get }, location: { search: '?v=1.7.0&b=opera' },
     URLSearchParams, navigator: {}, fetch: fetchImpl, encodeURIComponent, setTimeout,
