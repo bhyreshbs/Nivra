@@ -158,6 +158,27 @@ if (_isEdge || _isOpera) {
   });
 }
 
+// ─── Local-file setup prompt ──────────────────────────────────────────────────
+// Local PDFs only open in Nivra after the user turns on "Allow access to file URLs", which
+// cannot be granted from code. So: a small setup window right after install (setup/setup.html,
+// red until the switch is on) and a red "!" badge on the toolbar icon while it is off.
+async function _updateFileAccessBadge() {
+  try {
+    const allowed = await _isFileAccessAllowed();
+    await chrome.action.setBadgeText({ text: allowed ? '' : '!' });
+    if (!allowed) await chrome.action.setBadgeBackgroundColor({ color: '#d93025' });
+  } catch (_) { /* no action API / worker shutting down */ }
+}
+
+async function _openSetupWindow() {
+  const url = chrome.runtime.getURL('setup/setup.html');
+  try {
+    await chrome.windows.create({ url, type: 'popup', width: 460, height: 560, focused: true });
+  } catch (_) {
+    chrome.tabs.create({ url }).catch(() => {});
+  }
+}
+
 // ─── Event: Extension installed or updated ────────────────────────────────────
 chrome.runtime.onInstalled.addListener(async (details) => {
   // Set default to enabled on first install
@@ -170,13 +191,16 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   // Welcome page on a fresh install only, not on updates or browser updates.
   if (details?.reason === 'install') {
     chrome.tabs.create({ url: _sitePage('welcome.html') }).catch(() => {});
+    _openSetupWindow();
   }
+  _updateFileAccessBadge();
 });
 
 // ─── Event: Browser startup ──────────────────────────────────────────────────
 chrome.runtime.onStartup.addListener(async () => {
   await _syncRuleWithStorage();
   _registerUninstallPage();
+  _updateFileAccessBadge();
 });
 
 // ─── Event: Direct message from popup (most reliable MV3 pattern) ─────────────
@@ -200,7 +224,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message?.type === 'GET_FILE_ACCESS') {
-    _isFileAccessAllowed().then(allowed => sendResponse({ allowed }));
+    _isFileAccessAllowed().then(allowed => {
+      sendResponse({ allowed });
+      // The popup and the setup window re-check as the user flips the switch: keep the badge in step.
+      _updateFileAccessBadge();
+    });
     return true;
   }
 

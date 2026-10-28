@@ -41,7 +41,8 @@ Load `dist/` unpacked (`npm run package` first), then check:
 - [ ] Print, download transformed copy, document properties
 - [ ] Bottom bar collapse / expand; Appearance button label animation and mode swap
 - [ ] Fresh install opens the welcome page; removing the extension opens the goodbye page (both load from GitHub Pages)
-- [ ] With "Allow access to file URLs" off, the popup shows the banner; with it on, the banner is gone
+- [ ] With "Allow access to file URLs" off, the popup shows a red banner and the toolbar icon has a red "!" badge; with it on, both are gone
+- [ ] Fresh install opens the setup window (`setup/setup.html`): red with "Open Nivra settings" until the switch is on, then it turns green by itself (Firefox: "Allow site access")
 - [ ] No red errors in the viewer console (F12) and none under the extension's Errors on `edge://extensions`
 - [ ] `npm test` passes
 - [ ] `node tests/baseline-check.js` shows only the files you meant to change in the Chromium package (then `--update` it)

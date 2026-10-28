@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set up Nivra</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <main class="card" id="card" data-state="checking">
+    <div class="badge" id="badge" aria-hidden="true"></div>
+    <h1 id="title">Setting up Nivra…</h1>
+    <p class="lead" id="lead">Checking your browser.</p>
+
+    <ol class="steps" id="steps" hidden></ol>
+
+    <div class="actions">
+      <button type="button" class="btn" id="primary" hidden></button>
+      <button type="button" class="btn ghost" id="close" hidden>Close</button>
+    </div>
+    <p class="hint" id="hint" role="status" aria-live="polite"></p>
+  </main>
+  <script src="setup.js"></script>
+</body>
+</html>

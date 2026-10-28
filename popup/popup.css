@@ -387,6 +387,16 @@ body > :nth-child(5) { animation-delay: 0.18s; }
   color: var(--nv-fg-dim);
 }
 .access-banner[hidden] { display: none; }
+/* Required setup step not done yet (local files / site access off): red until it is. */
+.access-banner.alert {
+  background: rgba(255, 69, 58, 0.14);
+  border-color: rgba(255, 69, 58, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.25);
+}
+.access-banner.alert strong { color: #ff8f87; }
+.action-btn.alert { border-color: rgba(255, 69, 58, 0.6); background: rgba(255, 69, 58, 0.10); }
+.action-btn.alert .action-icon { background: rgba(255, 69, 58, 0.35); }
+.action-btn.alert .action-text-secondary { color: #ff8f87; font-weight: 600; }
 .access-banner strong { color: var(--nv-fg); font-weight: 600; }
 .access-banner button {
   margin-top: 8px;

@@ -26,6 +26,7 @@ const INCLUDE = [
   'background',
   'popup',
   'settings',
+  'setup',
   'transformations',
   'viewer',
   'pdfjs',

@@ -25,7 +25,7 @@ After installing, turn on **Allow access to file URLs** for Nivra on your browse
 
 - Automatic PDF redirection on Microsoft Edge, Chrome and Opera, for web `.pdf` links and local `file://` PDFs, with a fallback for when Edge's or Opera's own viewer wins the race
 - A Firefox build that redirects web `.pdf` links (local files stay in Firefox's viewer; drop them on the popup instead)
-- A popup banner that tells you when "Allow access to file URLs" is off, and browser-aware wording (Edge, Chrome, Opera or Firefox); on Firefox it asks for site access instead
+- A setup window right after install that stays red until "Allow access to file URLs" (Firefox: site access) is on, a red "!" badge on the toolbar icon while it is off, and a red banner in the popup, and browser-aware wording (Edge, Chrome, Opera or Firefox); on Firefox it asks for site access instead
 - A welcome page on first install and a goodbye page on uninstall (static pages in `docs/`, served by GitHub Pages)
 - Smart Dark that keeps photos, charts and diagrams in their real colours (pages *and* sidebar thumbnails)
 - Profiles (Reading, Night, Study, Focus, Original) and a "Remember for this site" look per website

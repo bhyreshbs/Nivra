@@ -91,6 +91,34 @@ api.webRequest.onBeforeRequest.addListener(
   ['blocking']
 );
 
+// ─── Site-access setup prompt ─────────────────────────────────────────────────
+// Firefox treats host permissions as opt-in, so until the user allows site access nothing is
+// intercepted. Show a setup window right after install (setup/setup.html, red until allowed)
+// and a red "!" badge on the toolbar icon while it is missing.
+const SITE_ORIGINS = (api.runtime.getManifest().host_permissions || []);
+
+async function _updateAccessBadge() {
+  try {
+    const granted = await api.permissions.contains({ origins: SITE_ORIGINS });
+    await api.action.setBadgeText({ text: granted ? '' : '!' });
+    if (!granted) await api.action.setBadgeBackgroundColor({ color: '#d93025' });
+  } catch (_) { /* APIs unavailable */ }
+}
+
+async function _openSetupWindow() {
+  const url = api.runtime.getURL('setup/setup.html');
+  try {
+    await api.windows.create({ url, type: 'popup', width: 460, height: 560 });
+  } catch (_) {
+    try { await api.tabs.create({ url }); } catch (__) { /* ignore */ }
+  }
+}
+
+try {
+  api.permissions.onAdded.addListener(_updateAccessBadge);
+  api.permissions.onRemoved.addListener(_updateAccessBadge);
+} catch (_) { /* APIs unavailable */ }
+
 // ─── Event: Extension installed or updated ────────────────────────────────────
 api.runtime.onInstalled.addListener(async (details) => {
   const result = await api.storage.local.get(STORAGE_KEY);
@@ -102,13 +130,16 @@ api.runtime.onInstalled.addListener(async (details) => {
   // Welcome page on a fresh install only, not on updates or browser updates.
   if (details?.reason === 'install') {
     Promise.resolve(api.tabs.create({ url: _sitePage('welcome.html') })).catch(() => {});
+    _openSetupWindow();
   }
+  _updateAccessBadge();
 });
 
 // ─── Event: Browser startup ──────────────────────────────────────────────────
 api.runtime.onStartup.addListener(async () => {
   await _syncWithStorage();
   _registerUninstallPage();
+  _updateAccessBadge();
 });
 
 // ─── Event: Messages from the popup ───────────────────────────────────────────

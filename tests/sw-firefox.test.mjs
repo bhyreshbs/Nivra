@@ -7,6 +7,7 @@ const VIEWER = 'moz-extension://1234-uuid/viewer/viewer.html';
 const store = {};
 const listeners = {};
 const created = [];
+const windows = [];
 let webRequestFilter, webRequestExtra;
 
 const on = name => ({ addListener: fn => { listeners[name] = fn; } });
@@ -27,6 +28,13 @@ globalThis.browser = {
     onMessage: on('message'),
   },
   tabs: { create: async opts => { created.push(opts.url); } },
+  windows: { create: async opts => { windows.push(opts); } },
+  action: { setBadgeText: async () => {}, setBadgeBackgroundColor: async () => {} },
+  permissions: {
+    contains: async () => false,
+    onAdded: { addListener: () => {} },
+    onRemoved: { addListener: () => {} },
+  },
   webRequest: {
     onBeforeRequest: {
       addListener: (fn, filter, extra) => {
@@ -153,17 +161,23 @@ test('a state change made while suspended is picked up on the next wake', async 
 test('fresh install stores enabled=true, opens welcome and sets the uninstall page', async () => {
   for (const k of Object.keys(store)) delete store[k];
   created.length = 0;
+  windows.length = 0;
   await listeners.installed({ reason: 'install' });
   assert.equal(store.nivraEnabled, true);
   assert.deepEqual(created, ['https://bhyreshbs.github.io/Nivra/welcome.html?v=9.9.9&b=firefox']);
+  assert.equal(windows.length, 1, 'setup window opened');
+  assert.equal(windows[0].url, 'moz-extension://1234-uuid/setup/setup.html');
+  assert.equal(windows[0].type, 'popup');
   assert.equal(listeners.uninstallUrl, 'https://bhyreshbs.github.io/Nivra/goodbye.html?v=9.9.9&b=firefox');
 });
 
 test('update keeps a stored false and opens no tab', async () => {
   store.nivraEnabled = false;
   created.length = 0;
+  windows.length = 0;
   await listeners.installed({ reason: 'update' });
   assert.equal(store.nivraEnabled, false);
   assert.deepEqual(created, []);
+  assert.equal(windows.length, 0, 'no setup window on update');
   assert.equal(await bg.isEnabled(), false);
 });

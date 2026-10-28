@@ -264,6 +264,8 @@ function _showFirefoxAccess(granted) {
       document.createElement('br'), btn);
   }
   banner.hidden = false;
+  banner.classList.toggle('alert', !granted);
+  btnFileAccess.classList.toggle('alert', !granted);
 
   btnFileAccess.querySelector('.action-text-primary').textContent = 'Site Access';
   document.getElementById('file-access-detail').textContent = granted
@@ -282,8 +284,13 @@ document.getElementById('btn-banner-access').addEventListener('click', _openExte
       _showFirefoxAccess(await _hasSiteAccess());
       return;
     }
-    document.getElementById('access-banner').hidden = !!allowed;
+    const banner = document.getElementById('access-banner');
+    banner.hidden = !!allowed;
+    // Required step: highlight it in red until local-file access is on.
+    banner.classList.toggle('alert', !allowed);
+    btnFileAccess.classList.toggle('alert', !allowed);
     if (allowed) document.getElementById('file-access-detail').textContent = 'Local PDF support is on';
+    else document.getElementById('file-access-detail').textContent = 'Required: turn on local files';
   } catch (_) { /* worker unavailable: leave the banner hidden */ }
 })();
 

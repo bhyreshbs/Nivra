@@ -1,0 +1,81 @@
+/* Nivra first-run setup window. Same dark glass look as the popup. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07070a;
+  --fg: #f5f5f5;
+  --dim: rgba(255, 255, 255, 0.66);
+  --edge: rgba(255, 255, 255, 0.12);
+  --red: #ff453a;
+  --red-soft: #ff8f87;
+  --green: #30d158;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: radial-gradient(120% 80% at 50% -10%, #16161e 0%, var(--bg) 60%);
+  color: var(--fg);
+  font: 14px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px 24px 22px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--edge);
+  text-align: center;
+  transition: border-color .3s, box-shadow .3s;
+}
+/* Required step not done: the whole card is red until it is. */
+.card[data-state="needed"] {
+  border-color: rgba(255, 69, 58, 0.7);
+  box-shadow: 0 0 0 1px rgba(255, 69, 58, 0.3), 0 18px 50px -18px rgba(255, 69, 58, 0.45);
+}
+.card[data-state="done"] { border-color: rgba(48, 209, 88, 0.6); }
+
+.badge {
+  width: 56px; height: 56px; margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 28px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+}
+.card[data-state="needed"] .badge { background: rgba(255, 69, 58, 0.22); color: var(--red-soft); }
+.card[data-state="done"] .badge { background: rgba(48, 209, 88, 0.2); color: var(--green); }
+
+h1 { font-size: 19px; font-weight: 650; margin-bottom: 6px; }
+.card[data-state="needed"] h1 { color: var(--red-soft); }
+.lead { color: var(--dim); font-size: 13.5px; margin-bottom: 16px; }
+
+.steps {
+  text-align: left;
+  margin: 0 0 18px;
+  padding: 12px 14px 12px 34px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--edge);
+  color: var(--dim);
+  font-size: 13px;
+}
+.steps li { margin: 3px 0; }
+.steps strong { color: var(--fg); }
+
+.actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  font: inherit; font-weight: 600; font-size: 14px;
+  padding: 10px 20px; border-radius: 999px; cursor: pointer;
+  color: #fff; background: #5a54e8; border: 0;
+}
+.card[data-state="needed"] .btn:not(.ghost) { background: var(--red); }
+.btn:hover { filter: brightness(1.12); }
+.btn.ghost { background: rgba(255, 255, 255, 0.09); box-shadow: inset 0 0 0 1px var(--edge); }
+.btn[hidden] { display: none; }
+
+.hint { margin-top: 14px; min-height: 1.4em; font-size: 12px; color: var(--dim); }
+.card[data-state="needed"] .hint { color: var(--red-soft); }
